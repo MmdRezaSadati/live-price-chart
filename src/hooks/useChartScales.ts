@@ -3,7 +3,7 @@
 import { useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 import { scaleLinear } from '@visx/scale';
-import { PricePoint } from '../types';
+import { PricePoint } from '@/types/chart';
 
 /**
  * Custom hook to calculate chart scales and constraints

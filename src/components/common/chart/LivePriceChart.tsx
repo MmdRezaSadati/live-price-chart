@@ -70,7 +70,7 @@ const LivePriceChart = ({
     // Update color based on price movement
     const colorToUse = isPositiveChange ? COLORS.up : COLORS.down;
     setChartColor(colorToUse);
-  }, [animatedPrice, lastPriceRef]);
+  }, [animatedPrice, lastPriceRef, isPositiveChange]);
 
   // Calculate responsive sizes for chart elements
   const fontSize = useMemo(

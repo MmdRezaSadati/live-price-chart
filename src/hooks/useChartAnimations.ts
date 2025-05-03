@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { CHART_ANIMATION } from '@/constants/chart';
+import { PricePoint } from '@/types/chart';
 
 /**
  * Custom hook for price animation
@@ -92,7 +93,7 @@ export const usePriceAnimation = (
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [currentPrice, zoomPrecision, onPriceUpdate]);
+  }, [currentPrice, zoomPrecision, onPriceUpdate, animatedPrice]);
   
   return animatedPrice;
 };
@@ -109,7 +110,7 @@ export const usePriceAnimation = (
 export const useLineDrawAnimation = (
   isNewPoint: boolean, 
   setIsNewPoint: (value: boolean) => void,
-  priceData: any[]
+  priceData: PricePoint[]
 ) => {
   // Base position for continuous animation (0.8-1.0)
   const [basePosition, setBasePosition] = useState(1.0);
@@ -225,10 +226,6 @@ export const useLineDrawAnimation = (
     // This makes sure we always show at least the latest 20% of data
     // while allowing the line to continuously move
     const visibleRange = 0.2; // Show 20% of the chart
-    
-    // Start position is adjusted by the base position
-    // which creates the continuous motion effect
-    const startPercent = Math.max(0, basePosition - visibleRange);
     
     setLineDrawProgress(basePosition);
     setVisiblePercent(visibleRange);

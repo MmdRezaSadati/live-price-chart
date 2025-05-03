@@ -55,12 +55,22 @@ export interface TimeRangeControlsProps {
 }
 
 /**
+ * Represents a D3 scale function
+ */
+export interface D3ScaleFunction {
+  (value: number): number;
+  domain(): number[];
+  range(): number[];
+  invert?(value: number): number;
+}
+
+/**
  * Props for the price path component
  */
 export interface PricePathProps {
   priceData: PricePoint[];
-  timeScale: any;
-  priceScale: any;
+  timeScale: D3ScaleFunction;
+  priceScale: D3ScaleFunction;
   width: number;
   height: number;
   headerHeight: number;
