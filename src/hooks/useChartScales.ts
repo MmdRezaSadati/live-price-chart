@@ -19,13 +19,29 @@ import { PricePoint } from '@/types/chart';
  */
 export const useChartScales = (
   priceData: PricePoint[],
-  animatedPrice: number | null,
+  animatedPrice: number,
   width: number,
   height: number,
   zoomPrecision: number,
   headerHeight: number,
   padding: { x: number, y: number }
 ) => {
+  // Calculate dynamic price range to ensure all prices are visible
+  const dynamicPriceRange = useMemo(() => {
+    if (priceData.length < 2) return zoomPrecision;
+    
+    // Calculate the min and max prices in the current data
+    const minPrice = d3.min(priceData, d => d.price) || 0;
+    const maxPrice = d3.max(priceData, d => d.price) || 0;
+    
+    // Calculate the needed range to show all prices
+    const dataRange = maxPrice - minPrice;
+    
+    // Use either the default range or the data range plus a buffer, whichever is larger
+    const buffer = dataRange * 0.3; // 30% buffer on top and bottom
+    return Math.max(zoomPrecision, dataRange + buffer);
+  }, [priceData, zoomPrecision]);
+
   // Time scale (X-axis)
   const timeScale = useMemo(() => {
     if (priceData.length < 2) return null;
@@ -38,41 +54,60 @@ export const useChartScales = (
         d3.min(priceData, d => d.timestamp) ?? 0,
         d3.max(priceData, d => d.timestamp) ?? 0
       ],
-      range: [0, width - rightPadding],
+      range: [padding.x, width - rightPadding],
     });
   }, [priceData, width, padding.x]);
 
+  // Find the price range for scaling
+  const priceRangeBounds = useMemo(() => {
+    if (priceData.length < 2 || !animatedPrice) return { min: 0, max: 100 };
+    
+    // Get min and max prices from the data
+    const minDataPrice = d3.min(priceData, d => d.price) || animatedPrice;
+    const maxDataPrice = d3.max(priceData, d => d.price) || animatedPrice;
+    
+    // Calculate a safe range that includes all data points
+    const range = dynamicPriceRange * 0.5; // Half the range for above and below
+    const midPrice = (minDataPrice + maxDataPrice) / 2; // Use mid-point of price data
+    
+    return {
+      min: midPrice - range,
+      max: midPrice + range
+    };
+  }, [priceData, animatedPrice, dynamicPriceRange]);
+
   // Price scale (Y-axis)
   const priceScale = useMemo(() => {
-    if (priceData.length < 2 || animatedPrice === null) return null;
+    if (priceData.length < 2 || !animatedPrice) return null;
     
-    // Range around the current price
-    const priceRange = zoomPrecision;
-    
+    // Use the calculated safe price range
     return scaleLinear({
       domain: [
-        animatedPrice - priceRange,
-        animatedPrice + priceRange
+        priceRangeBounds.min,
+        priceRangeBounds.max
       ],
-      range: [height - headerHeight - padding.y * 2, padding.y * 2], // Padding on top and bottom
+      // Add extra padding to top and bottom to ensure visibility
+      range: [height - headerHeight - padding.y, padding.y * 2], 
     });
-  }, [priceData, height, animatedPrice, zoomPrecision, headerHeight, padding.y]);
+  }, [priceData, height, animatedPrice, headerHeight, padding.y, priceRangeBounds]);
   
   // Price bounds to keep elements in view
   const priceBounds = useMemo(() => {
-    if (animatedPrice === null) return { min: 0, max: 100 };
+    if (!animatedPrice) return { min: 0, max: 100 };
     
-    return {
-      min: animatedPrice - zoomPrecision,
-      max: animatedPrice + zoomPrecision
-    };
-  }, [animatedPrice, zoomPrecision]);
+    // Use the calculated price range bounds
+    return priceRangeBounds;
+  }, [animatedPrice, priceRangeBounds]);
 
-  // Function to constrain prices to visible area
+  // Function to constrain prices to visible area with improved safety margins
   const constrainPrice = useCallback((price: number): number => {
-    const padding = zoomPrecision * 0.1;
-    return Math.min(Math.max(price, priceBounds.min + padding), priceBounds.max - padding);
-  }, [priceBounds, zoomPrecision]);
+    // Ensure the price is always kept within the visible bounds with a safety margin
+    const safetyMargin = (priceBounds.max - priceBounds.min) * 0.05; // 5% margin
+    const min = priceBounds.min + safetyMargin;
+    const max = priceBounds.max - safetyMargin;
+    
+    return Math.min(Math.max(price, min), max);
+  }, [priceBounds]);
 
   // Generate path for the price line
   const generateLinePath = useCallback((data: PricePoint[]): string => {

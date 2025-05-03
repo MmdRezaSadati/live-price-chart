@@ -80,20 +80,14 @@ export interface PricePathProps {
   };
   chartColor: string;
   glowColor: string;
-  linePath: string;
-  visibleEndPoint: {
-    x: number;
-    y: number;
-  };
-  animatedPrice: number;
   strokeWidth: number;
   circleRadius: number;
-  onLinePathRef: (ref: SVGPathElement | null) => void;
-  onCircleRef: (ref: SVGCircleElement | null) => void;
   fontSize: {
     labels: number;
   };
   lineDrawProgress?: number;
+  priceChange?: number;
+  darkMode?: boolean;
 }
 
 /**

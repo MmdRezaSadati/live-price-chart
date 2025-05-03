@@ -25,34 +25,28 @@ export const CHART_ANIMATION = {
    * Duration in milliseconds for drawing new line segments
    * Lower values = faster line drawing
    */
-  LINE_DRAW_DURATION: 600,
+  LINE_DRAW_DURATION: 400,
   
   /**
-   * Easing function for the line drawing animation
-   * Default is cubic ease out: 1 - Math.pow(1 - progress, 3)
+   * Easing function for animations
+   * 'cubic' = cubic-bezier ease out
    */
   LINE_EASING: 'cubic',
   
   /**
-   * Duration in milliseconds for price changes
-   * Affects how fast the chart reacts to new prices
+   * Time in milliseconds for one complete oscillation cycle
+   * Lower values = faster animation
    */
-  PRICE_CHANGE_DURATION: 600,
+  OSCILLATION_CYCLE: 8000,
   
   /**
-   * Duration in milliseconds for one complete movement cycle
-   * Controls how long it takes for the line to draw from start to end
-   * Higher values = slower, smoother movement
-   */
-  OSCILLATION_CYCLE: 20000,
-  
-  /**
-   * Range for the drawing animation
-   * Only moves forward, never backward
+   * Range for the line drawing progress oscillation
+   * MIN = minimum percent of path shown (0.97 = 97%)
+   * MAX = maximum percent of path shown (1.0 = 100%)
    */
   OSCILLATION_RANGE: {
-    MIN: 0.90,  // Starting position (higher = less of the line resets)
-    MAX: 1.0    // Ending position (always fully drawn at the end)
+    MIN: 0.97,
+    MAX: 1.0
   }
 };
 

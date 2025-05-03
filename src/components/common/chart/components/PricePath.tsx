@@ -1,8 +1,9 @@
 "use client";
 
+import React from 'react';
 import { PricePathProps } from "../../../../types/chart";
-import { COLORS as colors } from "@/constants/chart";
-import { useEffect, useRef, useMemo, useState } from "react";
+import { COLORS } from "@/constants/chart";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 /**
  * Chart grid and price path component
@@ -16,81 +17,142 @@ export const PricePath = ({
   height,
   headerHeight,
   padding,
-  chartColor,
   glowColor,
-  linePath,
-  visibleEndPoint,
-  animatedPrice,
-  strokeWidth,
-  circleRadius,
-  onLinePathRef,
-  onCircleRef,
+  strokeWidth = 3,
+  circleRadius = 6,
   fontSize,
   lineDrawProgress = 1.0,
+  priceChange = 0,
+  darkMode = true
 }: PricePathProps) => {
   // Local reference to path element for animation
   const pathRef = useRef<SVGPathElement | null>(null);
-  const areaPathRef = useRef<SVGPathElement | null>(null);
-  const [animatedEndPoint, setAnimatedEndPoint] = useState(visibleEndPoint);
-  const [clipPathData, setClipPathData] = useState('');
+  const circleRef = useRef<SVGCircleElement | null>(null);
   
-  // Apply stroke-dasharray and stroke-dashoffset directly
-  useEffect(() => {
-    const path = pathRef.current;
-    if (!path || !linePath) return;
+  // State for circle position
+  const [circlePosition, setCirclePosition] = useState({ x: 0, y: 0 });
+  
+  const color = priceChange >= 0 ? COLORS.up : COLORS.down;
+  const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
+  
+  // Calculate line path string based on price data
+  const linePath = useMemo(() => {
+    if (!priceData || !timeScale || !priceScale) return '';
     
-    // Get the total length of the path
-    const length = path.getTotalLength() || 1000;
+    // Only include points that should be visible based on lineDrawProgress
+    const visiblePoints = priceData.slice(
+      0, 
+      Math.max(2, Math.ceil(priceData.length * lineDrawProgress))
+    );
     
-    // Set the dash array to the path length
-    path.style.strokeDasharray = `${length}`;
-    
-    // Calculate dash offset to create the drawing effect
-    // lineDrawProgress = 1.0 means fully drawn, 0.0 means not drawn at all
-    const dashOffset = length * (1 - lineDrawProgress);
-    path.style.strokeDashoffset = `${dashOffset}`;
-    
-    // Calculate the point on the path at the current animation position
-    if (path && lineDrawProgress > 0) {
-      try {
-        // Find the point on the path at the current progress
-        const pointOnPath = path.getPointAtLength(length * lineDrawProgress);
-        
-        // Update the animated end point
-        setAnimatedEndPoint({
-          x: pointOnPath.x,
-          y: pointOnPath.y
-        });
-        
-        // Create a clipping path for the area fill
-        // This creates a path from 0,0 to the current position, then down to the bottom
-        // to create an exact matching fill area
-        if (priceData.length > 0) {
-          const areaBottom = height - headerHeight - padding.y * 2;
-          const clipPath = `M 0,0 H ${pointOnPath.x} V ${areaBottom} H 0 Z`;
-          setClipPathData(clipPath);
-        }
-      } catch {
-        // Fallback if getPointAtLength fails
-        setAnimatedEndPoint(visibleEndPoint);
+    // Generate path data
+    let d = '';
+    visiblePoints.forEach((point, i) => {
+      const x = timeScale(point.timestamp);
+      const y = priceScale(point.price);
+      
+      if (i === 0) {
+        d += `M ${x},${y}`;
+      } else {
+        d += ` L ${x},${y}`;
       }
-    }
-  }, [linePath, lineDrawProgress, visibleEndPoint, priceData.length, height, headerHeight, padding.y]);
-  
-  // Generate area fill path for the entire chart
-  const areaPath = useMemo(() => {
-    if (!linePath || !priceData.length) return '';
+    });
     
-    const areaBottom = height - headerHeight - padding.y * 2;
-    return `${linePath} L ${timeScale(priceData[priceData.length-1].timestamp)},${areaBottom} L ${timeScale(priceData[0].timestamp)},${areaBottom} Z`;
-  }, [linePath, priceData, height, headerHeight, padding.y, timeScale]);
+    return d;
+  }, [priceData, timeScale, priceScale, lineDrawProgress]);
   
-  // Forward the ref
-  const setPathRef = (ref: SVGPathElement | null) => {
-    pathRef.current = ref;
-    onLinePathRef(ref);
+  // Area path for fill
+  const areaPath = useMemo(() => {
+    if (!linePath) return '';
+    
+    // Close the path to create an area below the line
+    return `${linePath} L ${width},${height - headerHeight - padding.y} L ${padding.x},${height - headerHeight - padding.y} Z`;
+  }, [linePath, width, height, headerHeight, padding]);
+  
+  // Calculate path length and position circle directly on the path
+  useEffect(() => {
+    if (!pathRef.current || !linePath) return;
+    
+    try {
+      // Get total path length
+      const totalLength = pathRef.current.getTotalLength();
+      
+      // Set up path animation
+      pathRef.current.style.strokeDasharray = `${totalLength}`;
+      pathRef.current.style.strokeDashoffset = `${totalLength * (1 - lineDrawProgress)}`;
+      
+      // Calculate position for circle - reduce offset to move it forward
+      const visibleLength = totalLength * lineDrawProgress;
+      const circleOffset = 5; // Reduced from 15 to 5 to move the circle forward
+      const pointPosition = visibleLength - circleOffset;
+      
+      // Ensure we don't try to get a point before the start of the path
+      const finalPosition = Math.max(0, pointPosition);
+      
+      // Get the point on the path at the calculated position
+      const point = pathRef.current.getPointAtLength(finalPosition);
+      setCirclePosition({ x: point.x, y: point.y });
+    } catch (error) {
+      console.error("Error calculating path points:", error);
+    }
+  }, [linePath, lineDrawProgress]);
+  
+  // Grid rendering function
+  const renderGrid = () => {
+    const gridLines = [];
+    
+    // Horizontal grid lines (price levels)
+    for (let i = 0; i <= 5; i++) {
+      const price = priceData.length > 0 ? 
+        priceData[priceData.length - 1].price - 
+        priceData[priceData.length - 1].price * 0.002 + 
+        (i * (priceData[priceData.length - 1].price * 0.004)) / 4 : 
+        0;
+      
+      const y = priceScale(price);
+      gridLines.push(
+        <g key={`grid-${i}`} className="transition-all duration-700">
+          <line
+            x1={padding.x}
+            y1={y}
+            x2={width}
+            y2={y}
+            stroke={COLORS.grid}
+            strokeDasharray="3,5"
+            strokeWidth={1}
+          />
+          <text
+            x={padding.x / 2}
+            y={y - 6}
+            fill={COLORS.gridText}
+            fontSize={fontSize.labels}
+            className="font-mono"
+          >
+            ${Math.round(price).toLocaleString()}
+          </text>
+        </g>
+      );
+    }
+    
+    // Vertical grid lines (time periods)
+    for (let i = 0; i <= 4; i++) {
+      const x = padding.x + (i / 4) * (width - padding.x * 2);
+      gridLines.push(
+        <line
+          key={`v-${i}`}
+          x1={x}
+          y1={padding.y}
+          x2={x}
+          y2={height - headerHeight - padding.y * 2}
+          stroke={COLORS.grid}
+          strokeWidth="1"
+        />
+      );
+    }
+    
+    return gridLines;
   };
-  
+
   return (
     <svg
       width={width}
@@ -98,96 +160,68 @@ export const PricePath = ({
       style={{ marginTop: `${headerHeight}px` }}
     >
       {/* Grid lines with values */}
-      {Array.from({ length: 5 }, (_, i) => {
-        const price =
-          animatedPrice -
-          animatedPrice * 0.002 +
-          (i * (animatedPrice * 0.004)) / 4;
-        const y = priceScale(price);
-        return (
-          <g key={`grid-${i}`} className="transition-all duration-700">
-            <line
-              x1={0}
-              y1={y}
-              x2={width}
-              y2={y}
-              stroke={colors.grid}
-              strokeDasharray="3,5"
-              strokeWidth={1}
-            />
-            <text
-              x={padding.x / 2}
-              y={y - 6}
-              fill={colors.gridText}
-              fontSize={fontSize.labels}
-              className="font-mono"
-            >
-              ${price.toFixed(2)}
-            </text>
-          </g>
-        );
-      })}
+      {renderGrid()}
 
       {/* Time axis line */}
       <line
-        x1={0}
+        x1={padding.x}
         y1={height - headerHeight - padding.y * 2}
         x2={width}
         y2={height - headerHeight - padding.y * 2}
-        stroke={colors.grid}
+        stroke={COLORS.grid}
         strokeWidth={1}
       />
 
-      {/* Chart Area with gradient fill */}
+      {/* Chart content with animation */}
       <g>
-        {/* Area fill under the line with gradient */}
         <defs>
           <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
-            <stop offset="100%" stopColor={chartColor} stopOpacity="0.05" />
+            <stop offset="0%" stopColor={fillColor} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={fillColor} stopOpacity="0.05" />
           </linearGradient>
           
-          {/* Custom clipping path that exactly follows the visible part of the line */}
-          <clipPath id="areaClip">
-            <path d={clipPathData} />
+          {/* Clip path for area animation */}
+          <clipPath id="chartClip">
+            <path d={linePath} />
           </clipPath>
         </defs>
 
-        {/* Fill area under the curve - synchronized with animation using custom clip-path */}
-        {areaPath && (
-          <path
-            ref={areaPathRef}
-            d={areaPath}
-            fill="url(#areaGradient)"
-            opacity="0.6"
-            clipPath="url(#areaClip)"
-          />
-        )}
+        {/* Area fill with clipping */}
+        <path
+          d={areaPath}
+          fill="url(#areaGradient)"
+          clipPath="url(#chartClip)"
+          style={{
+            filter: `drop-shadow(0 0 15px ${glowColor})`,
+          }}
+          className="transition-all duration-300"
+        />
 
         {/* Price path with animation and glow */}
         <path
-          ref={setPathRef}
+          ref={pathRef}
           d={linePath}
           fill="none"
-          stroke={chartColor}
+          stroke={color}
           strokeWidth={strokeWidth}
           style={{
-            filter: `drop-shadow(0 0 8px ${glowColor})`,
+            filter: `drop-shadow(0 0 3px ${glowColor})`,
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="transition-colors duration-300 ease-out"
         />
 
-        {/* Circle indicator on path - positioned using the animated point from the path */}
+        {/* Circle indicator on path - positioned using getPointAtLength to ensure alignment */}
         <circle
-          ref={onCircleRef}
-          cx={animatedEndPoint.x}
-          cy={animatedEndPoint.y}
+          ref={circleRef}
+          cx={circlePosition.x}
+          cy={circlePosition.y}
           r={circleRadius}
-          fill={chartColor}
-          stroke="#fff"
+          fill={color}
+          stroke={darkMode ? COLORS.background : '#fff'}
           strokeWidth={strokeWidth * 0.7}
-          className="animate-pulse"
+          className="transition-colors duration-300 ease-out"
           style={{
             filter: `drop-shadow(0 0 8px ${glowColor})`,
           }}
@@ -196,13 +230,12 @@ export const PricePath = ({
         {/* Latest price marker line */}
         <line
           x1={padding.x}
-          y1={priceScale(animatedPrice)}
+          y1={priceScale(priceData.length > 0 ? priceData[priceData.length - 1].price : 0)}
           x2={width - padding.x}
-          y2={priceScale(animatedPrice)}
-          stroke={chartColor}
+          y2={priceScale(priceData.length > 0 ? priceData[priceData.length - 1].price : 0)}
+          stroke={color}
           strokeWidth={1}
           strokeDasharray="1,3"
-          style={{ opacity: 0.5 }}
         />
       </g>
     </svg>

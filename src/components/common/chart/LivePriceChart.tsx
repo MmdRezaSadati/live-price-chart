@@ -30,8 +30,6 @@ const LivePriceChart = ({
 
   // Chart element references
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
-  const linePathRef = useRef<SVGPathElement | null>(null);
-  const circleRef = useRef<SVGCircleElement | null>(null);
 
   // Zoom precision factor - controls how much the chart zooms in/out
   const zoomPrecision = 0.1; // Shows +/- $0.1 from current price
@@ -48,8 +46,8 @@ const LivePriceChart = ({
   } = useWebSocket(onPriceUpdate);
 
   const isPositiveChange = priceChange >= 0;
-  // Animate price changes
-  const animatedPrice = usePriceAnimation(currentPrice, zoomPrecision);
+  // Animate price changes - destructure to get just the price value
+  const { animatedPrice } = usePriceAnimation(currentPrice, zoomPrecision);
 
   // Animate line drawing for new points with continuous animation
   const { lineDrawProgress } = useLineDrawAnimation(
@@ -61,7 +59,7 @@ const LivePriceChart = ({
   // Update chart color based on price direction
   useEffect(() => {
     // No update needed if we don't have an animated price
-    if (animatedPrice === null) return;
+    if (animatedPrice === 0) return;
 
     // Set color based on the last price comparison (stored in WebSocket hook)
     const lastPrice = lastPriceRef.current;
@@ -108,7 +106,7 @@ const LivePriceChart = ({
   );
 
   // Setup scales and path generators for the chart
-  const { timeScale, priceScale, constrainPrice, generateLinePath } =
+  const { timeScale, priceScale } =
     useChartScales(
       priceData,
       animatedPrice,
@@ -118,82 +116,6 @@ const LivePriceChart = ({
       headerHeight,
       padding
     );
-
-  // Generate the line path
-  const linePath = useMemo(() => {
-    if (!timeScale || !priceScale || priceData.length < 2) return "";
-    return generateLinePath(priceData);
-  }, [priceData, timeScale, priceScale, generateLinePath]);
-
-  // Calculate position for the circle on the path
-  const visibleEndPoint = useMemo(() => {
-    if (priceData.length === 0 || !timeScale || !priceScale) {
-      return { x: width - 120, y: height / 2 };
-    }
-
-    // Calculate which point should be at the end of the visible portion of the path
-    const portionVisible = Math.min(1, lineDrawProgress);
-
-    // The visible part of the data is from 0 to the calculated index
-    const visiblePointCount = Math.max(
-      2,
-      Math.ceil(priceData.length * portionVisible)
-    );
-
-    // If we're showing the entire path
-    if (visiblePointCount >= priceData.length) {
-      const lastPoint = priceData[priceData.length - 1];
-      const constrainedPrice = constrainPrice(lastPoint.price);
-      return {
-        x: timeScale(lastPoint.timestamp),
-        y: priceScale(constrainedPrice),
-      };
-    }
-
-    // Get the last visible data point
-    const lastVisibleIndex = visiblePointCount - 1;
-    const lastVisiblePoint = priceData[lastVisibleIndex];
-    const nextPoint =
-      lastVisibleIndex < priceData.length - 1
-        ? priceData[lastVisibleIndex + 1]
-        : null;
-
-    // Calculate exact position based on progress
-    const fractionProgress =
-      priceData.length * portionVisible - lastVisibleIndex;
-
-    // If we're between points, interpolate the position
-    if (nextPoint && fractionProgress > 0) {
-      // Interpolate between current point and next point
-      const interpolatedTimestamp =
-        lastVisiblePoint.timestamp +
-        (nextPoint.timestamp - lastVisiblePoint.timestamp) * fractionProgress;
-      const interpolatedPrice =
-        lastVisiblePoint.price +
-        (nextPoint.price - lastVisiblePoint.price) * fractionProgress;
-
-      const constrainedPrice = constrainPrice(interpolatedPrice);
-      return {
-        x: timeScale(interpolatedTimestamp),
-        y: priceScale(constrainedPrice),
-      };
-    }
-
-    // Use exact position of last visible point
-    const constrainedPrice = constrainPrice(lastVisiblePoint.price);
-    return {
-      x: timeScale(lastVisiblePoint.timestamp),
-      y: priceScale(constrainedPrice),
-    };
-  }, [
-    priceData,
-    timeScale,
-    priceScale,
-    width,
-    height,
-    constrainPrice,
-    lineDrawProgress,
-  ]);
 
   // Handle time range selection
   const handleTimeRangeChange = (range: string) => {
@@ -207,7 +129,7 @@ const LivePriceChart = ({
     priceData.length < 2 ||
     !timeScale ||
     !priceScale ||
-    animatedPrice === null
+    animatedPrice === 0
   ) {
     return (
       <div
@@ -230,7 +152,7 @@ const LivePriceChart = ({
   }
 
   // Format data for display
-  const formattedPrice = animatedPrice.toFixed(2);
+  const formattedPrice = typeof animatedPrice === 'number' ? animatedPrice.toFixed(2) : '0.00';
   const formattedChange = priceChange.toFixed(2);
   const glowColor = isPositiveChange ? COLORS.upGlow : COLORS.downGlow;
 
@@ -274,19 +196,12 @@ const LivePriceChart = ({
         padding={padding}
         chartColor={chartColor}
         glowColor={glowColor}
-        linePath={linePath}
-        visibleEndPoint={visibleEndPoint}
-        animatedPrice={animatedPrice}
         strokeWidth={strokeWidth}
         circleRadius={circleRadius}
-        onLinePathRef={(ref) => {
-          linePathRef.current = ref;
-        }}
-        onCircleRef={(ref) => {
-          circleRef.current = ref;
-        }}
         fontSize={{ labels: fontSize.labels }}
         lineDrawProgress={lineDrawProgress}
+        priceChange={priceChange}
+        darkMode={true}
       />
 
       {/* Bottom Stats */}

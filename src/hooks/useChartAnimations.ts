@@ -18,84 +18,83 @@ export const usePriceAnimation = (
   zoomPrecision: number,
   onPriceUpdate?: (price: number) => void
 ) => {
-  const [animatedPrice, setAnimatedPrice] = useState<number | null>(null);
+  const [animatedPrice, setAnimatedPrice] = useState(currentPrice || 0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<number | null>(null);
-  const lastCurrentPriceRef = useRef<number | null>(null);
-  
+  const startTimeRef = useRef<number>(0);
+  const startPriceRef = useRef<number>(0);
+  const targetPriceRef = useRef<number>(0);
+
   useEffect(() => {
-    if (typeof window === 'undefined') return; // Skip on server-side
-    
-    // Initialize price if it's the first value
+    // Skip if price hasn't been set yet
     if (currentPrice === null) return;
     
-    if (animatedPrice === null) {
+    // If this is the first price, set it immediately
+    if (animatedPrice === 0) {
       setAnimatedPrice(currentPrice);
-      lastCurrentPriceRef.current = currentPrice;
       return;
     }
     
-    // Prevent re-animation if current price hasn't changed from last animation
-    if (currentPrice === lastCurrentPriceRef.current) return;
-    lastCurrentPriceRef.current = currentPrice;
-    
-    // Calculate animation parameters based on price difference
-    const priceDiff = Math.abs(currentPrice - animatedPrice);
-    const maxChange = zoomPrecision * 0.8;
-    const cappedDiff = Math.min(priceDiff, maxChange);
-    
-    // Skip animation for large jumps
-    if (priceDiff > maxChange) {
-      setAnimatedPrice(currentPrice > animatedPrice 
-        ? currentPrice - maxChange * 0.2
-        : currentPrice + maxChange * 0.2);
+    // Don't animate tiny changes
+    if (Math.abs(currentPrice - animatedPrice) < (currentPrice * 0.0001 * zoomPrecision)) {
       return;
     }
     
-    // Dynamic duration based on price change - use base duration from constants
-    const duration = Math.min(CHART_ANIMATION.PRICE_CHANGE_DURATION, CHART_ANIMATION.PRICE_CHANGE_DURATION * (cappedDiff / maxChange));
+    // Set up animation parameters
+    startTimeRef.current = performance.now();
+    startPriceRef.current = animatedPrice;
+    targetPriceRef.current = currentPrice;
+    setIsAnimating(true);
     
-    // Cancel any ongoing animation
-    if (animationRef.current !== null) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
-    
-    // Start the animation
-    const startTime = performance.now();
-    const initialPrice = animatedPrice;
-    
-    const animatePrice = (timestamp: number) => {
-      const elapsed = timestamp - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-      const newAnimatedPrice = initialPrice + (currentPrice - initialPrice) * easeProgress;
-      
-      setAnimatedPrice(newAnimatedPrice);
-      
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(animatePrice);
-      } else {
-        // Animation complete
-        setAnimatedPrice(currentPrice);
-        animationRef.current = null;
+    // Start animation if not already running
+    if (!animationRef.current) {
+      const animate = (timestamp: number) => {
+        const elapsed = timestamp - startTimeRef.current;
+        const duration = 1000; // Animation duration in ms
         
-        if (onPriceUpdate) {
-          onPriceUpdate(currentPrice);
+        if (elapsed < duration) {
+          // Calculate progress with easing
+          const progress = elapsed / duration;
+          const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+          
+          // Calculate new price
+          const newPrice = startPriceRef.current + 
+            (targetPriceRef.current - startPriceRef.current) * easedProgress;
+          
+          // Update animated price
+          setAnimatedPrice(newPrice);
+          
+          // Call the optional callback
+          if (onPriceUpdate) {
+            onPriceUpdate(newPrice);
+          }
+          
+          // Continue animation
+          animationRef.current = requestAnimationFrame(animate);
+        } else {
+          // End of animation
+          setAnimatedPrice(targetPriceRef.current);
+          if (onPriceUpdate) {
+            onPriceUpdate(targetPriceRef.current);
+          }
+          setIsAnimating(false);
+          animationRef.current = null;
         }
-      }
-    };
+      };
+      
+      // Start the animation
+      animationRef.current = requestAnimationFrame(animate);
+    }
     
-    animationRef.current = requestAnimationFrame(animatePrice);
-    
-    // Cleanup
+    // Cleanup on unmount
     return () => {
       if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [currentPrice, zoomPrecision, onPriceUpdate, animatedPrice]);
+  }, [currentPrice, animatedPrice, zoomPrecision, onPriceUpdate]);
   
-  return animatedPrice;
+  return { animatedPrice, isAnimating };
 };
 
 /**
@@ -112,8 +111,8 @@ export const useLineDrawAnimation = (
   setIsNewPoint: (value: boolean) => void,
   priceData: PricePoint[]
 ) => {
-  // Base position for continuous animation (0.8-1.0)
-  const [basePosition, setBasePosition] = useState(1.0);
+  // Base position for continuous animation (0.95-1.0)
+  const [basePosition, setBasePosition] = useState(0.98);
   
   // Visual progress showing how much of the line is visible (0.0-1.0)
   const [visiblePercent, setVisiblePercent] = useState(0.2); // Show last 20% by default
@@ -122,24 +121,21 @@ export const useLineDrawAnimation = (
   const animationRef = useRef<number | null>(null);
   const lastDataLengthRef = useRef<number>(0);
   const isAnimatingNewPointRef = useRef<boolean>(false);
+  const lastCycleTimeRef = useRef<number>(performance.now());
   
   // The final progress value returned (combination of base position and new point animation)
-  const [lineDrawProgress, setLineDrawProgress] = useState(1.0);
+  const [lineDrawProgress, setLineDrawProgress] = useState(0.98);
   
   // Start the continuous animation loop
   useEffect(() => {
     if (typeof window === 'undefined') return; // Skip on server-side
     
-    // Instead of oscillation, use a continuous forward motion
-    const startTime = performance.now();
-    
+    // Continuous movement without resetting
     const animate = (timestamp: number) => {
-      // Create a continuous forward movement
-      // This will cause the line to progress and reset when it reaches the end
-      const elapsed = timestamp - startTime;
+      // Calculate elapsed time since last animation frame
+      const elapsed = timestamp - lastCycleTimeRef.current;
       
-      // Instead of oscillation, create a sawtooth wave pattern
-      // that only moves forward (from 0.8 to 1.0) and then resets instantly to 0.8
+      // Get animation constants
       const cycleTime = CHART_ANIMATION.OSCILLATION_CYCLE;
       const minPosition = CHART_ANIMATION.OSCILLATION_RANGE.MIN;
       const maxPosition = CHART_ANIMATION.OSCILLATION_RANGE.MAX;
@@ -148,16 +144,20 @@ export const useLineDrawAnimation = (
       // Calculate progress through the cycle (0.0 to 1.0)
       const cycleProgress = (elapsed % cycleTime) / cycleTime;
       
-      // Linear movement from min to max
-      const newBasePosition = minPosition + (cycleProgress * range);
+      // Smoother movement with a sinusoidal pattern that never resets
+      // This creates a gentle oscillation between min and max
+      const newBasePosition = minPosition + 
+        (range * (Math.sin(cycleProgress * Math.PI * 2) * 0.5 + 0.5));
       
       setBasePosition(newBasePosition);
+      lastCycleTimeRef.current = timestamp;
       
       // Continue animation loop
       animationRef.current = requestAnimationFrame(animate);
     };
     
     // Start the animation
+    lastCycleTimeRef.current = performance.now();
     animationRef.current = requestAnimationFrame(animate);
     
     // Cleanup on unmount
@@ -176,16 +176,16 @@ export const useLineDrawAnimation = (
     const hasNewData = priceData.length > lastDataLengthRef.current;
     
     // If we're not already animating a new point and have new data
-    if (hasNewData && !isAnimatingNewPointRef.current) {
+    if (hasNewData && !isAnimatingNewPointRef.current && isNewPoint) {
       isAnimatingNewPointRef.current = true;
       
       // Store new data length
       lastDataLengthRef.current = priceData.length;
       
-      // Fast-forward animation when new data arrives
-      // This creates a smooth transition to show the new data point
+      // Ensure we're always continuing the line from where we are
+      // This prevents resetting when new data arrives
       const startPosition = basePosition; // Current position
-      const targetPosition = 1.0; // Target position
+      const targetPosition = 1.0; // Target position (fully drawn)
       const duration = CHART_ANIMATION.LINE_DRAW_DURATION;
       const startTime = performance.now();
       
@@ -202,14 +202,16 @@ export const useLineDrawAnimation = (
         }
         
         // Calculate how much of the new segment to draw
-        const newBasePosition = startPosition + (targetPosition - startPosition) * easeProgress;
-        setBasePosition(newBasePosition);
+        // Never go backward, only forward from the current position
+        const newPosition = startPosition + 
+          (targetPosition - startPosition) * easeProgress;
         
+        // Update the base position but don't override the main animation
         if (progress < 1) {
-          // Continue new point animation
+          // Continue animation
           requestAnimationFrame(animateNewPoint);
         } else {
-          // New point animation complete
+          // Animation complete
           isAnimatingNewPointRef.current = false;
           setIsNewPoint(false);
         }
@@ -218,16 +220,15 @@ export const useLineDrawAnimation = (
       // Start the new point animation
       requestAnimationFrame(animateNewPoint);
     }
-  }, [priceData, setIsNewPoint, basePosition]);
+  }, [priceData, isNewPoint, setIsNewPoint, basePosition]);
   
-  // Calculate final line draw progress based on base position and visible percent
+  // Calculate final line draw progress based on base position
   useEffect(() => {
-    // Calculate how much of the chart is visible
-    // This makes sure we always show at least the latest 20% of data
-    // while allowing the line to continuously move
+    // We always want to show at least the most recent data
     const visibleRange = 0.2; // Show 20% of the chart
     
-    setLineDrawProgress(basePosition);
+    // Always use at least 0.95 to ensure we never reset too far back
+    setLineDrawProgress(Math.max(0.95, basePosition));
     setVisiblePercent(visibleRange);
   }, [basePosition]);
   
