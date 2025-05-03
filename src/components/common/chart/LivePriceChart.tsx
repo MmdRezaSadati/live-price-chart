@@ -47,11 +47,16 @@ const LivePriceChart = ({
     lastPriceRef,
   } = useWebSocket(onPriceUpdate);
 
+  const isPositiveChange = priceChange >= 0;
   // Animate price changes
   const animatedPrice = usePriceAnimation(currentPrice, zoomPrecision);
 
-  // Animate line drawing for new points
-  const lineDrawProgress = useLineDrawAnimation(isNewPoint, setIsNewPoint);
+  // Animate line drawing for new points with continuous animation
+  const { lineDrawProgress } = useLineDrawAnimation(
+    isNewPoint,
+    setIsNewPoint,
+    priceData
+  );
 
   // Update chart color based on price direction
   useEffect(() => {
@@ -126,42 +131,58 @@ const LivePriceChart = ({
       return { x: width - 120, y: height / 2 };
     }
 
-    // Calculate which data point should be visible based on line draw progress
-    const visibleIndex = Math.min(
-      priceData.length - 1,
-      Math.floor(priceData.length - 1 + (lineDrawProgress - 0.9) * 10)
+    // Calculate which point should be at the end of the visible portion of the path
+    const portionVisible = Math.min(1, lineDrawProgress);
+
+    // The visible part of the data is from 0 to the calculated index
+    const visiblePointCount = Math.max(
+      2,
+      Math.ceil(priceData.length * portionVisible)
     );
 
-    // Get the data point at the line's current visible end
-    const dataPoint = priceData[visibleIndex];
+    // If we're showing the entire path
+    if (visiblePointCount >= priceData.length) {
+      const lastPoint = priceData[priceData.length - 1];
+      const constrainedPrice = constrainPrice(lastPoint.price);
+      return {
+        x: timeScale(lastPoint.timestamp),
+        y: priceScale(constrainedPrice),
+      };
+    }
+
+    // Get the last visible data point
+    const lastVisibleIndex = visiblePointCount - 1;
+    const lastVisiblePoint = priceData[lastVisibleIndex];
     const nextPoint =
-      visibleIndex < priceData.length - 1 ? priceData[visibleIndex + 1] : null;
+      lastVisibleIndex < priceData.length - 1
+        ? priceData[lastVisibleIndex + 1]
+        : null;
+
+    // Calculate exact position based on progress
+    const fractionProgress =
+      priceData.length * portionVisible - lastVisibleIndex;
 
     // If we're between points, interpolate the position
-    if (nextPoint && lineDrawProgress < 1) {
-      const pointProgress =
-        (lineDrawProgress - 0.9) * 10 -
-        Math.floor((lineDrawProgress - 0.9) * 10);
-
+    if (nextPoint && fractionProgress > 0) {
+      // Interpolate between current point and next point
       const interpolatedTimestamp =
-        dataPoint.timestamp +
-        (nextPoint.timestamp - dataPoint.timestamp) * pointProgress;
+        lastVisiblePoint.timestamp +
+        (nextPoint.timestamp - lastVisiblePoint.timestamp) * fractionProgress;
       const interpolatedPrice =
-        dataPoint.price + (nextPoint.price - dataPoint.price) * pointProgress;
+        lastVisiblePoint.price +
+        (nextPoint.price - lastVisiblePoint.price) * fractionProgress;
 
       const constrainedPrice = constrainPrice(interpolatedPrice);
-
       return {
         x: timeScale(interpolatedTimestamp),
         y: priceScale(constrainedPrice),
       };
     }
 
-    // Use exact constrained price for Y-axis to match the line path perfectly
-    const constrainedPrice = constrainPrice(dataPoint.price);
-
+    // Use exact position of last visible point
+    const constrainedPrice = constrainPrice(lastVisiblePoint.price);
     return {
-      x: timeScale(dataPoint.timestamp),
+      x: timeScale(lastVisiblePoint.timestamp),
       y: priceScale(constrainedPrice),
     };
   }, [
@@ -173,18 +194,6 @@ const LivePriceChart = ({
     constrainPrice,
     lineDrawProgress,
   ]);
-
-  // Apply path animation effect
-  useEffect(() => {
-    if (typeof window === "undefined") return; // Skip on server-side
-    if (linePathRef.current && linePath) {
-      const pathLength = linePathRef.current.getTotalLength();
-      linePathRef.current.setAttribute("stroke-dasharray", `${pathLength}`);
-
-      const dashOffset = pathLength * (1 - lineDrawProgress);
-      linePathRef.current.setAttribute("stroke-dashoffset", `${dashOffset}`);
-    }
-  }, [linePath, lineDrawProgress]);
 
   // Handle time range selection
   const handleTimeRangeChange = (range: string) => {
@@ -223,7 +232,6 @@ const LivePriceChart = ({
   // Format data for display
   const formattedPrice = animatedPrice.toFixed(2);
   const formattedChange = priceChange.toFixed(2);
-  const isPositiveChange = priceChange >= 0;
   const glowColor = isPositiveChange ? COLORS.upGlow : COLORS.downGlow;
 
   return (
@@ -278,6 +286,7 @@ const LivePriceChart = ({
           circleRef.current = ref;
         }}
         fontSize={{ labels: fontSize.labels }}
+        lineDrawProgress={lineDrawProgress}
       />
 
       {/* Bottom Stats */}

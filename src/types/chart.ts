@@ -83,6 +83,7 @@ export interface PricePathProps {
   fontSize: {
     labels: number;
   };
+  lineDrawProgress?: number;
 }
 
 /**

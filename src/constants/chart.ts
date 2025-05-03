@@ -18,6 +18,45 @@ export const COLORS: ChartColors = {
 };
 
 /**
+ * Chart animation settings
+ */
+export const CHART_ANIMATION = {
+  /**
+   * Duration in milliseconds for drawing new line segments
+   * Lower values = faster line drawing
+   */
+  LINE_DRAW_DURATION: 600,
+  
+  /**
+   * Easing function for the line drawing animation
+   * Default is cubic ease out: 1 - Math.pow(1 - progress, 3)
+   */
+  LINE_EASING: 'cubic',
+  
+  /**
+   * Duration in milliseconds for price changes
+   * Affects how fast the chart reacts to new prices
+   */
+  PRICE_CHANGE_DURATION: 600,
+  
+  /**
+   * Duration in milliseconds for one complete movement cycle
+   * Controls how long it takes for the line to draw from start to end
+   * Higher values = slower, smoother movement
+   */
+  OSCILLATION_CYCLE: 20000,
+  
+  /**
+   * Range for the drawing animation
+   * Only moves forward, never backward
+   */
+  OSCILLATION_RANGE: {
+    MIN: 0.90,  // Starting position (higher = less of the line resets)
+    MAX: 1.0    // Ending position (always fully drawn at the end)
+  }
+};
+
+/**
  * Bitcoin symbol is fixed - this is a Bitcoin-only chart
  */
 export const BITCOIN_SYMBOL = 'btcusdt';
