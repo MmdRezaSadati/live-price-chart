@@ -4,6 +4,7 @@ import React from 'react';
 import { PricePathProps } from "../../../../types/chart";
 import { COLORS } from "@/constants/chart";
 import { useEffect, useRef, useState, useMemo } from "react";
+import { TimeAxis } from './TimeAxis';
 
 /**
  * Chart grid and price path component
@@ -31,6 +32,12 @@ export const PricePath = ({
   
   // State for circle position
   const [circlePosition, setCirclePosition] = useState({ x: 0, y: 0 });
+  
+  // Calculate chart area height (excluding header)
+  const chartHeight = height - headerHeight;
+  
+  // Reserve extra space at the bottom for the time axis
+  const timeAxisHeight = 30; // Height reserved for time axis
   
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
@@ -66,8 +73,10 @@ export const PricePath = ({
     if (!linePath) return '';
     
     // Close the path to create an area below the line
-    return `${linePath} L ${width},${height - headerHeight - padding.y} L ${padding.x},${height - headerHeight - padding.y} Z`;
-  }, [linePath, width, height, headerHeight, padding]);
+    // Use the adjusted position for the bottom of the area to align with time axis
+    const bottomY = chartHeight - padding.y * 2 - timeAxisHeight;
+    return `${linePath} L ${width},${bottomY} L ${padding.x},${bottomY} Z`;
+  }, [linePath, width, chartHeight, padding, timeAxisHeight]);
   
   // Calculate path length and position circle directly on the path
   useEffect(() => {
@@ -143,7 +152,7 @@ export const PricePath = ({
           x1={x}
           y1={padding.y}
           x2={x}
-          y2={height - headerHeight - padding.y * 2}
+          y2={chartHeight - padding.y * 3}
           stroke={COLORS.grid}
           strokeWidth="1"
         />
@@ -156,8 +165,9 @@ export const PricePath = ({
   return (
     <svg
       width={width}
-      height={height - headerHeight}
+      height={chartHeight}
       style={{ marginTop: `${headerHeight}px` }}
+      className="chart-svg"
     >
       {/* Grid lines with values */}
       {renderGrid()}
@@ -165,9 +175,9 @@ export const PricePath = ({
       {/* Time axis line */}
       <line
         x1={padding.x}
-        y1={height - headerHeight - padding.y * 2}
+        y1={chartHeight - padding.y * 2 - timeAxisHeight}
         x2={width}
-        y2={height - headerHeight - padding.y * 2}
+        y2={chartHeight - padding.y * 2 - timeAxisHeight}
         stroke={COLORS.grid}
         strokeWidth={1}
       />
@@ -185,17 +195,6 @@ export const PricePath = ({
             <path d={linePath} />
           </clipPath>
         </defs>
-
-        {/* Area fill with clipping */}
-        <path
-          d={areaPath}
-          fill="url(#areaGradient)"
-          clipPath="url(#chartClip)"
-          style={{
-            filter: `drop-shadow(0 0 15px ${glowColor})`,
-          }}
-          className="transition-all duration-300"
-        />
 
         {/* Price path with animation and glow */}
         <path
@@ -218,7 +217,7 @@ export const PricePath = ({
           cx={circlePosition.x}
           cy={circlePosition.y}
           r={circleRadius}
-          fill={color}
+          fill={'#fff'}
           stroke={darkMode ? COLORS.background : '#fff'}
           strokeWidth={strokeWidth * 0.7}
           className="transition-colors duration-300 ease-out"
@@ -236,6 +235,19 @@ export const PricePath = ({
           stroke={color}
           strokeWidth={1}
           strokeDasharray="1,3"
+        />
+        
+        {/* Time axis at the bottom of the chart */}
+        <TimeAxis 
+          timeScale={timeScale}
+          width={width}
+          height={chartHeight}
+          padding={{
+            x: padding.x,
+            y: padding.y + timeAxisHeight / 2
+          }}
+          priceData={priceData}
+          fontSize={fontSize}
         />
       </g>
     </svg>
