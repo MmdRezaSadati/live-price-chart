@@ -32,7 +32,7 @@ const LivePriceChart = ({
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Zoom precision factor - controls how much the chart zooms in/out
-  const zoomPrecision = 0.1; // Shows +/- $0.1 from current price
+  const zoomPrecision = 0.07; // Shows +/- $0.1 from current price
 
   // Setup WebSocket connection and get price data
   const {
