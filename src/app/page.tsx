@@ -1,10 +1,10 @@
+import ChartContainer from '../components/ChartContainer/ChartContainer';
+
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen p-2 sm:p-4 bg-black text-white">
       <header className="mb-4 sm:mb-6">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 text-[#fcd34d]">
-          Bitcoin Live Trading
-        </h1>
+        <h1 className="text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 text-[#fcd34d]">Bitcoin Live Trading</h1>
         <p className="text-sm sm:text-base text-gray-400">
           Real-time price data with advanced visualization
         </p>
@@ -15,7 +15,7 @@ export default function Home() {
           id="chart-container"
           className="w-full h-full rounded-xl overflow-hidden bg-[#0f172a] p-2 sm:p-4"
         >
-          {/* TODO : Chart Container */}
+          <ChartContainer />
         </div>
       </div>
 
