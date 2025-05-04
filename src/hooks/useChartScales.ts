@@ -5,27 +5,41 @@ import * as d3 from 'd3';
 import { scaleLinear } from '@visx/scale';
 import { PricePoint } from '@/types/chart';
 
+interface ChartDimensions {
+  width: number;
+  height: number;
+  padding: { x: number; y: number };
+  headerHeight?: number;
+}
+
 /**
  * Custom hook to calculate chart scales and constraints
  * 
  * @param priceData Array of price points
- * @param animatedPrice Current animated price
- * @param width Chart width
- * @param height Chart height
- * @param zoomPrecision Zoom precision factor
- * @param headerHeight Height of the chart header
- * @param padding Chart padding
+ * @param dimensions Chart dimensions including width, height, and padding
+ * @param options Additional options like zoom precision and animated price
  * @returns All necessary scales and path functions
  */
 export const useChartScales = (
   priceData: PricePoint[],
-  animatedPrice: number,
-  width: number,
-  height: number,
-  zoomPrecision: number,
-  headerHeight: number,
-  padding: { x: number, y: number }
+  dimensions: ChartDimensions,
+  options: {
+    animatedPrice?: number;
+    zoomPrecision?: number;
+  } = {}
 ) => {
+  const {
+    width,
+    height,
+    padding,
+    headerHeight = 0
+  } = dimensions;
+
+  const {
+    animatedPrice = 0,
+    zoomPrecision = 1000
+  } = options;
+
   // Calculate dynamic price range to ensure all prices are visible
   const dynamicPriceRange = useMemo(() => {
     if (priceData.length < 2) return zoomPrecision;
@@ -60,7 +74,7 @@ export const useChartScales = (
 
   // Find the price range for scaling
   const priceRangeBounds = useMemo(() => {
-    if (priceData.length < 2 || !animatedPrice) return { min: 0, max: 100 };
+    if (priceData.length < 2) return { min: 0, max: 100 };
     
     // Get min and max prices from the data
     const minDataPrice = d3.min(priceData, d => d.price) || animatedPrice;
@@ -78,7 +92,7 @@ export const useChartScales = (
 
   // Price scale (Y-axis)
   const priceScale = useMemo(() => {
-    if (priceData.length < 2 || !animatedPrice) return null;
+    if (priceData.length < 2) return null;
     
     // Use the calculated safe price range
     return scaleLinear({
@@ -89,15 +103,15 @@ export const useChartScales = (
       // Add extra padding to top and bottom to ensure visibility
       range: [height - headerHeight - padding.y, padding.y * 2], 
     });
-  }, [priceData, height, animatedPrice, headerHeight, padding.y, priceRangeBounds]);
+  }, [priceData, height, headerHeight, padding.y, priceRangeBounds]);
   
   // Price bounds to keep elements in view
   const priceBounds = useMemo(() => {
-    if (!animatedPrice) return { min: 0, max: 100 };
+    if (priceData.length < 2) return { min: 0, max: 100 };
     
     // Use the calculated price range bounds
     return priceRangeBounds;
-  }, [animatedPrice, priceRangeBounds]);
+  }, [priceData, priceRangeBounds]);
 
   // Function to constrain prices to visible area with improved safety margins
   const constrainPrice = useCallback((price: number): number => {
@@ -110,7 +124,7 @@ export const useChartScales = (
   }, [priceBounds]);
 
   // Generate path for the price line
-  const generateLinePath = useCallback((data: PricePoint[]): string => {
+  const generatePath = useCallback((data: PricePoint[]): string => {
     if (!timeScale || !priceScale || data.length < 2) return '';
     
     const lineGenerator = d3.line<PricePoint>()
@@ -129,6 +143,6 @@ export const useChartScales = (
     priceScale,
     priceBounds,
     constrainPrice,
-    generateLinePath,
+    generatePath,
   };
 }; 

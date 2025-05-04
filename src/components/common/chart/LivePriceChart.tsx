@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { LivePriceChartProps } from "../../../types/chart";
 import { COLORS } from "../../../constants/chart";
-import { ChartHeader } from "./components/ChartHeader";
+import ChartHeader from "@/components/ChartHeader";
 import { TimeRangeControls } from "./components/TimeRangeControls";
 import { PricePath } from "./components/PricePath";
 import { ChartStats } from "./components/ChartStats";
@@ -106,16 +106,19 @@ const LivePriceChart = ({
   );
 
   // Setup scales and path generators for the chart
-  const { timeScale, priceScale } =
-    useChartScales(
-      priceData,
-      animatedPrice,
+  const { timeScale, priceScale } = useChartScales(
+    priceData,
+    {
       width,
       height,
-      zoomPrecision,
-      headerHeight,
-      padding
-    );
+      padding,
+      headerHeight
+    },
+    {
+      animatedPrice,
+      zoomPrecision
+    }
+  );
 
   // Handle time range selection
   const handleTimeRangeChange = (range: string) => {
@@ -133,6 +136,7 @@ const LivePriceChart = ({
   ) {
     return (
       <div
+        role="status"
         className="flex items-center justify-center w-full h-full rounded-xl overflow-hidden shadow-2xl"
         style={{ backgroundColor: COLORS.background, width, height }}
       >
@@ -153,7 +157,7 @@ const LivePriceChart = ({
 
   // Format data for display
   const formattedPrice = typeof animatedPrice === 'number' ? animatedPrice.toFixed(2) : '0.00';
-  const formattedChange = priceChange.toFixed(2);
+  const formattedChange = typeof priceChange === 'number' ? priceChange.toFixed(2) : '0.00';
   const glowColor = isPositiveChange ? COLORS.upGlow : COLORS.downGlow;
 
   return (

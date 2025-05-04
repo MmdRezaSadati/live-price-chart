@@ -15,10 +15,10 @@ import { PricePoint } from '@/types/chart';
  */
 export const usePriceAnimation = (
   currentPrice: number | null, 
-  zoomPrecision: number,
+  zoomPrecision: number = 1,
   onPriceUpdate?: (price: number) => void
 ) => {
-  const [animatedPrice, setAnimatedPrice] = useState(currentPrice || 0);
+  const [animatedPrice, setAnimatedPrice] = useState(currentPrice ?? 0);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -29,14 +29,12 @@ export const usePriceAnimation = (
     // Skip if price hasn't been set yet
     if (currentPrice === null) return;
     
-    // If this is the first price, set it immediately
-    if (animatedPrice === 0) {
+    // If this is the first price or no animation is needed, set it immediately
+    if (animatedPrice === 0 || Math.abs(currentPrice - animatedPrice) < (currentPrice * 0.0001 * zoomPrecision)) {
       setAnimatedPrice(currentPrice);
-      return;
-    }
-    
-    // Don't animate tiny changes
-    if (Math.abs(currentPrice - animatedPrice) < (currentPrice * 0.0001 * zoomPrecision)) {
+      if (onPriceUpdate) {
+        onPriceUpdate(currentPrice);
+      }
       return;
     }
     

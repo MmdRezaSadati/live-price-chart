@@ -16,6 +16,7 @@ export const TimeRangeControls = ({
 }: TimeRangeControlsProps) => {
   return (
     <div
+      data-testid="time-range-controls"
       className="absolute flex gap-1 md:gap-2 z-10"
       style={{
         top: `${headerHeight + padding.y}px`,

@@ -1,13 +1,9 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { ChartHeaderProps } from "../../../../types/chart";
+import React, { useRef, useEffect } from "react";
+import { ChartHeaderProps } from "../types/chart";
 import { COLORS as colors } from "@/constants/chart";
 
-/**
- * Header component for the Bitcoin price chart
- * Displays the Bitcoin logo, title, and current price with change
- */
 const ChartHeader = ({
   price,
   priceColor,
@@ -20,10 +16,8 @@ const ChartHeader = ({
   padding,
   headerHeight,
 }: ChartHeaderProps) => {
-  // Reference to the price display for direct DOM updates
   const priceDisplayRef = useRef<HTMLDivElement | null>(null);
 
-  // Update price display color directly for instant feedback
   useEffect(() => {
     if (priceDisplayRef.current) {
       priceDisplayRef.current.style.color = priceColor;
@@ -43,7 +37,6 @@ const ChartHeader = ({
         height: `${headerHeight}px`,
       }}
     >
-      {/* Bitcoin logo and title */}
       <div className="flex items-center gap-2 md:gap-3">
         <div
           className="rounded-full flex items-center justify-center"
@@ -77,7 +70,6 @@ const ChartHeader = ({
         </div>
       </div>
 
-      {/* Price and change display */}
       <div className="flex flex-col items-end">
         <div
           ref={priceDisplayRef}
@@ -113,4 +105,4 @@ const ChartHeader = ({
   );
 };
 
-export default ChartHeader;
+export default ChartHeader; 

@@ -102,7 +102,10 @@ export const PricePath = ({
       const point = pathRef.current.getPointAtLength(finalPosition);
       setCirclePosition({ x: point.x, y: point.y });
     } catch (error) {
-      console.error("Error calculating path points:", error);
+      // Only log error if we're not in a test environment
+      if (process.env.NODE_ENV !== 'test') {
+        console.error("Error calculating path points:", error);
+      }
     }
   }, [linePath, lineDrawProgress]);
   
@@ -122,6 +125,7 @@ export const PricePath = ({
       gridLines.push(
         <g key={`grid-${i}`} className="transition-all duration-700">
           <line
+            data-testid="grid-line"
             x1={padding.x}
             y1={y}
             x2={width}
@@ -196,8 +200,19 @@ export const PricePath = ({
           </clipPath>
         </defs>
 
+        {/* Area fill below the line with gradient */}
+        <path
+          data-testid="area-path"
+          d={areaPath}
+          fill="url(#areaGradient)"
+          opacity={0.5}
+          clipPath="url(#chartClip)"
+          className="transition-colors duration-300 ease-out"
+        />
+
         {/* Price path with animation and glow */}
         <path
+          data-testid="price-path"
           ref={pathRef}
           d={linePath}
           fill="none"
@@ -205,6 +220,8 @@ export const PricePath = ({
           strokeWidth={strokeWidth}
           style={{
             filter: `drop-shadow(0 0 3px ${glowColor})`,
+            strokeDasharray: lineDrawProgress < 1 ? 'none' : undefined,
+            strokeDashoffset: lineDrawProgress < 1 ? 'none' : undefined
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -213,6 +230,7 @@ export const PricePath = ({
 
         {/* Circle indicator on path - positioned using getPointAtLength to ensure alignment */}
         <circle
+          data-testid="indicator-circle"
           ref={circleRef}
           cx={circlePosition.x}
           cy={circlePosition.y}

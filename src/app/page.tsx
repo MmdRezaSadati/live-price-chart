@@ -1,3 +1,4 @@
+import React from 'react';
 import ChartContainer from '../components/ChartContainer/ChartContainer';
 
 export default function Home() {

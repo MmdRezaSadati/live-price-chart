@@ -16,6 +16,8 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
   const [priceData, setPriceData] = useState<PricePoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [isNewPoint, setIsNewPoint] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   // Track initial price for calculating change
   const initialPriceRef = useRef<number | null>(null);
@@ -111,6 +113,8 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
 
       ws.onopen = () => {
         console.log("Connection established with Binance Bitcoin feed");
+        setIsConnected(true);
+        setError(null);
         setupRegularUpdates();
       };
 
@@ -126,10 +130,13 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
 
       ws.onerror = (error) => {
         console.error("WebSocket error:", error);
+        setError(error as Error);
+        setIsConnected(false);
       };
 
       ws.onclose = () => {
         console.log("Connection closed");
+        setIsConnected(false);
         if (throttleTimer) {
           clearInterval(throttleTimer);
         }
@@ -139,6 +146,8 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
       isInitialMount.current = false;
     } catch (error) {
       console.error("Error connecting to WebSocket:", error);
+      setError(error as Error);
+      setIsConnected(false);
     }
 
     // Cleanup on unmount
@@ -171,5 +180,8 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
     priceChangeValue,
     lastPriceRef,
     initialPriceRef,
+    isConnected,
+    error,
+    ws: socketRef.current
   };
 };
