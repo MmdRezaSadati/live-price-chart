@@ -128,9 +128,9 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
         latestTimestamp = timestamp;
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setError(error as Error);
+      ws.onerror = (event: Event) => {
+        console.error("WebSocket error:", event);
+        setError(new Error("WebSocket encountered an error"));
         setIsConnected(false);
       };
 
@@ -144,9 +144,13 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
 
       socketRef.current = ws;
       isInitialMount.current = false;
-    } catch (error) {
-      console.error("Error connecting to WebSocket:", error);
-      setError(error as Error);
+    } catch (e: unknown) {
+      console.error("Error connecting to WebSocket:", e);
+      if (e instanceof Error) {
+        setError(e);
+      } else {
+        setError(new Error(String(e)));
+      }
       setIsConnected(false);
     }
 
