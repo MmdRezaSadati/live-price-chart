@@ -243,18 +243,6 @@ export const PricePath = ({
             filter: `drop-shadow(0 0 8px ${glowColor})`,
           }}
         />
-
-        {/* Latest price marker line */}
-        <line
-          x1={padding.x}
-          y1={priceScale(priceData.length > 0 ? priceData[priceData.length - 1].price : 0)}
-          x2={width - padding.x}
-          y2={priceScale(priceData.length > 0 ? priceData[priceData.length - 1].price : 0)}
-          stroke={color}
-          strokeWidth={1}
-          strokeDasharray="1,3"
-        />
-        
         {/* Time axis at the bottom of the chart */}
         <TimeAxis 
           timeScale={timeScale}

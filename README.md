@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Live Price Chart
+
+A modern, responsive, and highly performant real-time Bitcoin price chart built with Next.js, React, D3, and WebSocket.
+
+## Table of Contents
+
+- [Demo](#demo)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Development](#development)
+  - [Running Tests](#running-tests)
+  - [Building for Production](#building-for-production)
+  - [Deployment](#deployment)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Demo
+
+A live demo is available at: [https://live-price-chart.vercel.app](https://live-price-chart.vercel.app)
+
+## Features
+
+- Real-time Bitcoin price updates via Binance WebSocket API
+- Smooth line and price animations
+- Time range selection (1m, 5m, 15m, 1h, 4h, etc.)
+- Dynamic scales with D3 for time and price axes
+- Dark mode styling with Tailwind CSS
+- Comprehensive unit and integration tests (44+ tests)
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **Languages**: TypeScript, JavaScript
+- **Styling**: Tailwind CSS
+- **Charting**: D3.js, Tangram VizX (visx)
+- **Animations**: React hooks with `requestAnimationFrame` and D3
+- **Testing**: Jest, React Testing Library
+- **Bundler**: Webpack (via Next.js)
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js v18 or later
+- npm v9 or later (or Yarn)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/MmdRezaSadati/live-price-chart.git
+cd live-price-chart
+
+# Install dependencies
+npm install
+``` 
+
+### Development
+
+```bash
+# Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Running Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Run all tests once
+npm test
 
-## Learn More
+# Watch mode
+npm test -- --watch
+``` 
 
-To learn more about Next.js, take a look at the following resources:
+All unit and integration tests must pass before merging.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Building for Production
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+npm start
+```
 
-## Deploy on Vercel
+### Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is optimized for Vercel. Simply link the GitHub repository to your Vercel account and deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Structure
+
+```text
+├── src/
+│   ├── app/                  # Next.js App Router pages
+│   │   ├── layout.tsx        # Root layout
+│   │   └── page.tsx          # Home page
+│   ├── components/           # Reusable UI components
+│   ├── hooks/                # Custom React hooks (useWebSocket, useChartScales, animations)
+│   ├── constants/            # Application constants (colors, symbols)
+│   ├── types/                # TypeScript type definitions
+│   ├── styles/               # Global and component-level styles
+│   └── __tests__/            # All test files
+├── babel.config.js           # Babel configuration (automatic JSX runtime)
+├── jest.config.cjs           # Jest configuration
+├── postcss.config.js         # PostCSS configuration
+├── tailwind.config.js        # Tailwind CSS configuration
+└── README.md                 # This file
+```
+
+## Configuration
+
+- **Babel**: Uses `@babel/preset-react` with `runtime: 'automatic'` to avoid manual React imports.
+- **Tailwind**: Configured in `tailwind.config.js`.
+- **Jest**: Setup in `jest.config.cjs`, with mocks and global setup in `jest.setup.js`.
+
+### Environment Variables
+
+No environment variables are required for local development. The WebSocket URL is hard-coded for the Binance BTC/USDT stream.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request with clear descriptions and passing tests.
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m "feat: add awesome feature"`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+Ensure all tests pass and adhere to the repository coding style.
