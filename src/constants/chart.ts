@@ -23,9 +23,9 @@ export const COLORS: ChartColors = {
 export const CHART_ANIMATION = {
   /**
    * Duration in milliseconds for drawing new line segments
-   * Lower values = faster line drawing
+   * Higher values = smoother line drawing
    */
-  LINE_DRAW_DURATION: 400,
+  LINE_DRAW_DURATION: 800,
   
   /**
    * Easing function for animations
@@ -35,17 +35,17 @@ export const CHART_ANIMATION = {
   
   /**
    * Time in milliseconds for one complete oscillation cycle
-   * Lower values = faster animation
+   * Higher values = smoother animation
    */
-  OSCILLATION_CYCLE: 8000,
+  OSCILLATION_CYCLE: 12000,
   
   /**
    * Range for the line drawing progress oscillation
-   * MIN = minimum percent of path shown (0.97 = 97%)
+   * MIN = minimum percent of path shown (0.95 = 95%)
    * MAX = maximum percent of path shown (1.0 = 100%)
    */
   OSCILLATION_RANGE: {
-    MIN: 0.97,
+    MIN: 0.95,
     MAX: 1.0
   }
 };

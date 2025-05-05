@@ -48,12 +48,15 @@ export const usePriceAnimation = (
     if (!animationRef.current) {
       const animate = (timestamp: number) => {
         const elapsed = timestamp - startTimeRef.current;
-        const duration = 1000; // Animation duration in ms
+        const duration = 1500; // افزایش از 1000 به 1500 برای انیمیشن نرم‌تر
         
         if (elapsed < duration) {
-          // Calculate progress with easing
+          // Calculate progress with smoother easing
           const progress = elapsed / duration;
-          const easedProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
+          // استفاده از تابع easing پیچیده‌تر برای حرکت نرم‌تر
+          const easedProgress = progress < 0.5 
+            ? 4 * progress * progress * progress 
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
           
           // Calculate new price
           const newPrice = startPriceRef.current + 
@@ -130,27 +133,21 @@ export const useLineDrawAnimation = (
     
     // Continuous movement without resetting
     const animate = (timestamp: number) => {
-      // Calculate elapsed time since last animation frame
       const elapsed = timestamp - lastCycleTimeRef.current;
       
-      // Get animation constants
       const cycleTime = CHART_ANIMATION.OSCILLATION_CYCLE;
       const minPosition = CHART_ANIMATION.OSCILLATION_RANGE.MIN;
       const maxPosition = CHART_ANIMATION.OSCILLATION_RANGE.MAX;
       const range = maxPosition - minPosition;
       
-      // Calculate progress through the cycle (0.0 to 1.0)
+      // محاسبه progress با استفاده از تابع سینوسی نرم‌تر
       const cycleProgress = (elapsed % cycleTime) / cycleTime;
-      
-      // Smoother movement with a sinusoidal pattern that never resets
-      // This creates a gentle oscillation between min and max
       const newBasePosition = minPosition + 
-        (range * (Math.sin(cycleProgress * Math.PI * 2) * 0.5 + 0.5));
+        (range * (Math.sin(cycleProgress * Math.PI * 2 - Math.PI/2) * 0.5 + 0.5));
       
       setBasePosition(newBasePosition);
       lastCycleTimeRef.current = timestamp;
       
-      // Continue animation loop
       animationRef.current = requestAnimationFrame(animate);
     };
     
