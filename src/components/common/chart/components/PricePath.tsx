@@ -5,6 +5,7 @@ import { PricePathProps } from "../../../../types/chart";
 import { COLORS } from "@/constants/chart";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { TimeAxis } from './TimeAxis';
+import { useSpring, animated } from 'react-spring';
 
 /**
  * Chart grid and price path component
@@ -29,6 +30,7 @@ export const PricePath = ({
   // Local reference to path element for animation
   const pathRef = useRef<SVGPathElement | null>(null);
   const circleRef = useRef<SVGCircleElement | null>(null);
+  const [pathLength, setPathLength] = useState(0);
   
   // State for circle position
   const [circlePosition, setCirclePosition] = useState({ x: 0, y: 0 });
@@ -211,7 +213,7 @@ export const PricePath = ({
         />
 
         {/* Price path with animation and glow */}
-        <path
+        <animated.path
           data-testid="price-path"
           ref={pathRef}
           d={linePath}
@@ -220,8 +222,8 @@ export const PricePath = ({
           strokeWidth={strokeWidth}
           style={{
             filter: `drop-shadow(0 0 3px ${glowColor})`,
-            strokeDasharray: lineDrawProgress < 1 ? 'none' : undefined,
-            strokeDashoffset: lineDrawProgress < 1 ? 'none' : undefined
+            strokeDasharray: pathLength,
+            strokeDashoffset: spring.dash,
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
