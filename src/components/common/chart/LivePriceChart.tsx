@@ -149,12 +149,12 @@ const LivePriceChart = ({
       >
         <div className="flex flex-col items-center gap-3">
           <div className="relative w-16 h-16">
-            <div
-              className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
-              style={{
-                borderColor: `${COLORS.accent} transparent ${COLORS.accent} ${COLORS.accent}`,
-              }}
-            ></div>
+          <div
+            className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
+            style={{
+              borderColor: `${COLORS.accent} transparent ${COLORS.accent} ${COLORS.accent}`,
+            }}
+          ></div>
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center text-xs font-bold" style={{ color: COLORS.accent }}>
                 {Math.round(loadingProgress * 100)}%

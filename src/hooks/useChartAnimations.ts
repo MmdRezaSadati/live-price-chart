@@ -21,9 +21,10 @@ export const usePriceAnimation = (
   const [animatedPrice, setAnimatedPrice] = useState(currentPrice ?? 0);
   const [isAnimating, setIsAnimating] = useState(false);
   const animationRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const startPriceRef = useRef<number>(0);
-  const targetPriceRef = useRef<number>(0);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const velocityRef = useRef<number>(0);
+  const positionRef = useRef<number>(0);
+  const targetRef = useRef<number>(0);
 
   useEffect(() => {
     // Skip if price hasn't been set yet
@@ -32,61 +33,81 @@ export const usePriceAnimation = (
     // If this is the first price, set it immediately
     if (animatedPrice === 0) {
       setAnimatedPrice(currentPrice);
+      positionRef.current = currentPrice;
+      targetRef.current = currentPrice;
       if (onPriceUpdate) {
         onPriceUpdate(currentPrice);
       }
       return;
     }
+
+    const now = performance.now();
+    const deltaTime = now - lastUpdateTimeRef.current;
+    lastUpdateTimeRef.current = now;
+
+    // Update target and calculate new velocity
+    const oldTarget = targetRef.current;
+    targetRef.current = currentPrice;
     
-    // Set up animation parameters
-    startTimeRef.current = performance.now();
-    startPriceRef.current = animatedPrice;
-    targetPriceRef.current = currentPrice;
-    setIsAnimating(true);
-    
+    // Calculate velocity based on target change
+    if (deltaTime > 0) {
+      const targetDelta = currentPrice - oldTarget;
+      velocityRef.current = targetDelta / deltaTime;
+    }
+
     // Start animation if not already running
     if (!animationRef.current) {
       const animate = (timestamp: number) => {
-        const elapsed = timestamp - startTimeRef.current;
-        // Use a longer duration for smoother transitions
-        const duration = 2000; 
+        const now = performance.now();
+        const deltaTime = Math.min(now - lastUpdateTimeRef.current, 32); // Cap at 32ms for stability
+        lastUpdateTimeRef.current = now;
+
+        // Spring physics parameters
+        const stiffness = 0.1; // Spring stiffness
+        const damping = 0.8;   // Damping factor
+        const mass = 1.0;      // Mass of the spring
+
+        // Calculate spring force
+        const displacement = targetRef.current - positionRef.current;
+        const springForce = stiffness * displacement;
         
-        if (elapsed < duration) {
-          // Calculate progress with smoother easing
-          const progress = elapsed / duration;
-          
-          // Custom easing curve for very smooth transition
-          const easedProgress = cubicBezier(0.25, 0.1, 0.25, 1.0, progress);
-          
-          // Calculate new price with smoother transition
-          const newPrice = startPriceRef.current + 
-            (targetPriceRef.current - startPriceRef.current) * easedProgress;
-          
-          // Update animated price
-          setAnimatedPrice(newPrice);
-          
-          // Call the optional callback
+        // Calculate damping force
+        const dampingForce = damping * velocityRef.current;
+        
+        // Calculate acceleration (F = ma)
+        const acceleration = (springForce - dampingForce) / mass;
+        
+        // Update velocity and position using Verlet integration
+        velocityRef.current += acceleration * deltaTime;
+        positionRef.current += velocityRef.current * deltaTime;
+
+        // Check if we're close enough to target to stop
+        const isCloseEnough = Math.abs(displacement) < 0.01 && Math.abs(velocityRef.current) < 0.01;
+        
+        if (isCloseEnough) {
+          // Settle to exact target
+          positionRef.current = targetRef.current;
+          velocityRef.current = 0;
+          setAnimatedPrice(targetRef.current);
           if (onPriceUpdate) {
-            onPriceUpdate(newPrice);
-          }
-          
-          // Continue animation
-          animationRef.current = requestAnimationFrame(animate);
-        } else {
-          // End of animation
-          setAnimatedPrice(targetPriceRef.current);
-          if (onPriceUpdate) {
-            onPriceUpdate(targetPriceRef.current);
+            onPriceUpdate(targetRef.current);
           }
           setIsAnimating(false);
           animationRef.current = null;
+        } else {
+          // Continue animation
+          setAnimatedPrice(positionRef.current);
+          if (onPriceUpdate) {
+            onPriceUpdate(positionRef.current);
+          }
+          animationRef.current = requestAnimationFrame(animate);
         }
       };
-      
-      // Start the animation
+
+      setIsAnimating(true);
       animationRef.current = requestAnimationFrame(animate);
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (animationRef.current !== null) {
@@ -97,6 +118,11 @@ export const usePriceAnimation = (
   
   return { animatedPrice, isAnimating };
 };
+
+// Exponential ease-out function
+function easeOutExpo(x: number): number {
+  return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+}
 
 /**
  * Custom hook for animating the extension of a line to new data points
@@ -135,13 +161,13 @@ export const useLineDrawAnimation = (
     if (!priceData || priceData.length < 2) return;
     
     const currentLength = priceData.length;
-    
+      
     // If we have new data and we're not already animating
     if (currentLength > prevDataLengthRef.current && isNewPoint && !isAnimatingNewSegment) {
       // We have a new data point - capture the last two points
       const prevPoint = priceData[currentLength - 2];
       const newPoint = priceData[currentLength - 1];
-      
+    
       // Store points for animation reference
       lastTwoPointsRef.current = {
         prev: prevPoint,
@@ -154,14 +180,14 @@ export const useLineDrawAnimation = (
       
       // Set up animation
       const startTime = performance.now();
-      const duration = 1500; // 1.5 seconds for smooth drawing
+      const duration = 2000; // 2 seconds for smooth drawing
       
       const animateSegment = (timestamp: number) => {
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
-        // Use cubic-bezier easing for very smooth animation
-        const easedProgress = cubicBezier(0.16, 1, 0.3, 1, progress);
+        // Use a custom easing function for very smooth animation
+        const easedProgress = easeInOutCubic(progress);
         
         // Update the segment drawing progress
         setNewSegmentProgress(easedProgress);
@@ -209,6 +235,11 @@ export const useLineDrawAnimation = (
     lastTwoPoints: lastTwoPointsRef.current
   };
 };
+
+// Custom easing function for smooth animation
+function easeInOutCubic(x: number): number {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
 
 /**
  * Cubic bezier easing function for smoother animations

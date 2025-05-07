@@ -135,14 +135,14 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
       // Only add a new point every 200ms to avoid too frequent updates
       const now = Date.now();
       if (now - lastAdditionRef.current > 200) {
-        setPriceData((prevData) => {
+      setPriceData((prevData) => {
           const newData = [...prevData, newPoint];
-          setIsNewPoint(true);
+        setIsNewPoint(true);
           lastAdditionRef.current = now;
-          return newData.length > MAX_DATA_POINTS
-            ? newData.slice(-MAX_DATA_POINTS)
-            : newData;
-        });
+        return newData.length > MAX_DATA_POINTS
+          ? newData.slice(-MAX_DATA_POINTS)
+          : newData;
+      });
       }
     };
 
@@ -239,4 +239,4 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
     loadingProgress,
     ws: socketRef.current
   };
-}; 
+};
