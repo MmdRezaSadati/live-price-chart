@@ -29,8 +29,8 @@ export const usePriceAnimation = (
     // Skip if price hasn't been set yet
     if (currentPrice === null) return;
     
-    // If this is the first price or no animation is needed, set it immediately
-    if (animatedPrice === 0 || Math.abs(currentPrice - animatedPrice) < (currentPrice * 0.0001 * zoomPrecision)) {
+    // If this is the first price, set it immediately
+    if (animatedPrice === 0) {
       setAnimatedPrice(currentPrice);
       if (onPriceUpdate) {
         onPriceUpdate(currentPrice);
@@ -48,16 +48,17 @@ export const usePriceAnimation = (
     if (!animationRef.current) {
       const animate = (timestamp: number) => {
         const elapsed = timestamp - startTimeRef.current;
-        const duration = 1900; 
+        // Use a longer duration for smoother transitions
+        const duration = 2000; 
         
         if (elapsed < duration) {
           // Calculate progress with smoother easing
           const progress = elapsed / duration;
-          const easedProgress = progress < 0.5 
-            ? 4 * progress * progress * progress 
-            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
           
-          // Calculate new price
+          // Custom easing curve for very smooth transition
+          const easedProgress = cubicBezier(0.25, 0.1, 0.25, 1.0, progress);
+          
+          // Calculate new price with smoother transition
           const newPrice = startPriceRef.current + 
             (targetPriceRef.current - startPriceRef.current) * easedProgress;
           
@@ -92,14 +93,14 @@ export const usePriceAnimation = (
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [currentPrice, animatedPrice, zoomPrecision, onPriceUpdate]);
+  }, [currentPrice, animatedPrice, onPriceUpdate]);
   
   return { animatedPrice, isAnimating };
 };
 
 /**
- * Custom hook for continuous line drawing animation
- * Creates a seamless, always-moving animation effect
+ * Custom hook for animating the extension of a line to new data points
+ * Creates a smooth animation effect for new points being added
  * 
  * @param isNewPoint Whether a new data point was added
  * @param setIsNewPoint Function to update the isNewPoint state
@@ -111,124 +112,139 @@ export const useLineDrawAnimation = (
   setIsNewPoint: (value: boolean) => void,
   priceData: PricePoint[]
 ) => {
-  // Base position for continuous animation (0.95-1.0)
-  const [basePosition, setBasePosition] = useState(0.98);
+  // State for animation progress of the newest segment (0.0 to 1.0)
+  const [newSegmentProgress, setNewSegmentProgress] = useState(1.0);
   
-  // Visual progress showing how much of the line is visible (0.0-1.0)
-  const [visiblePercent, setVisiblePercent] = useState(0.2); // Show last 20% by default
+  // State for whether we're currently animating a new segment
+  const [isAnimatingNewSegment, setIsAnimatingNewSegment] = useState(false);
   
-  // Track animation state
+  // Previous data length to detect new points
+  const prevDataLengthRef = useRef<number>(0);
+  
+  // Animation frame reference for cleanup
   const animationRef = useRef<number | null>(null);
-  const lastDataLengthRef = useRef<number>(0);
-  const isAnimatingNewPointRef = useRef<boolean>(false);
-  const lastCycleTimeRef = useRef<number>(performance.now());
   
-  // The final progress value returned (combination of base position and new point animation)
-  const [lineDrawProgress, setLineDrawProgress] = useState(0.98);
-  
-  // Start the continuous animation loop
+  // The last two points for segment animation
+  const lastTwoPointsRef = useRef<{prev: PricePoint | null, current: PricePoint | null}>({
+    prev: null,
+    current: null
+  });
+
+  // Monitor for new data points and animate segments
   useEffect(() => {
-    if (typeof window === 'undefined') return; // Skip on server-side
+    if (!priceData || priceData.length < 2) return;
     
-    // Continuous movement without resetting
-    const animate = (timestamp: number) => {
-      const elapsed = timestamp - lastCycleTimeRef.current;
-      
-      const cycleTime = CHART_ANIMATION.OSCILLATION_CYCLE;
-      const minPosition = CHART_ANIMATION.OSCILLATION_RANGE.MIN;
-      const maxPosition = CHART_ANIMATION.OSCILLATION_RANGE.MAX;
-      const range = maxPosition - minPosition;
-      
-      // Calculate progress with smoother sine wave
-      const cycleProgress = (elapsed % cycleTime) / cycleTime;
-      const newBasePosition = minPosition + 
-        (range * (Math.sin(cycleProgress * Math.PI * 2 - Math.PI/2) * 0.5 + 0.5));
-      
-      setBasePosition(newBasePosition);
-      lastCycleTimeRef.current = timestamp;
-      
-      animationRef.current = requestAnimationFrame(animate);
-    };
+    const currentLength = priceData.length;
     
-    // Start the animation
-    lastCycleTimeRef.current = performance.now();
-    animationRef.current = requestAnimationFrame(animate);
+    // If we have new data and we're not already animating
+    if (currentLength > prevDataLengthRef.current && isNewPoint && !isAnimatingNewSegment) {
+      // We have a new data point - capture the last two points
+      const prevPoint = priceData[currentLength - 2];
+      const newPoint = priceData[currentLength - 1];
+      
+      // Store points for animation reference
+      lastTwoPointsRef.current = {
+        prev: prevPoint,
+        current: newPoint
+      };
+      
+      // Start animating from 0 to show the new segment gradually
+      setNewSegmentProgress(0);
+      setIsAnimatingNewSegment(true);
+      
+      // Set up animation
+      const startTime = performance.now();
+      const duration = 1500; // 1.5 seconds for smooth drawing
+      
+      const animateSegment = (timestamp: number) => {
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Use cubic-bezier easing for very smooth animation
+        const easedProgress = cubicBezier(0.16, 1, 0.3, 1, progress);
+        
+        // Update the segment drawing progress
+        setNewSegmentProgress(easedProgress);
+        
+        if (progress < 1) {
+          // Continue animation
+          animationRef.current = requestAnimationFrame(animateSegment);
+        } else {
+          // Animation complete
+          setNewSegmentProgress(1.0);
+          setIsAnimatingNewSegment(false);
+          setIsNewPoint(false);
+          animationRef.current = null;
+        }
+      };
+      
+      // Clean up any existing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      
+      // Start the segment animation
+      animationRef.current = requestAnimationFrame(animateSegment);
+    }
     
-    // Cleanup on unmount
+    // Update the previous length
+    prevDataLengthRef.current = currentLength;
+  }, [priceData, isNewPoint, setIsNewPoint, isAnimatingNewSegment]);
+  
+  // Clean up any animations on unmount
+  useEffect(() => {
     return () => {
-      if (animationRef.current !== null) {
+      if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
   }, []);
   
-  // Handle new data points
-  useEffect(() => {
-    if (!priceData || priceData.length === 0) return;
-    
-    // Check if we have new data points
-    const hasNewData = priceData.length > lastDataLengthRef.current;
-    
-    // If we're not already animating a new point and have new data
-    if (hasNewData && !isAnimatingNewPointRef.current && isNewPoint) {
-      isAnimatingNewPointRef.current = true;
-      
-      // Store new data length
-      lastDataLengthRef.current = priceData.length;
-      
-      // Ensure we're always continuing the line from where we are
-      // This prevents resetting when new data arrives
-      const startPosition = basePosition; // Current position
-      const targetPosition = 1.0; // Target position (fully drawn)
-      const duration = CHART_ANIMATION.LINE_DRAW_DURATION;
-      const startTime = performance.now();
-      
-      const animateNewPoint = (timestamp: number) => {
-        const elapsed = timestamp - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Use easing based on the constant settings
-        let easeProgress;
-        if (CHART_ANIMATION.LINE_EASING === 'cubic') {
-          easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic ease out
-        } else {
-          easeProgress = progress; // Default to linear if not specified
-        }
-        
-        // Calculate how much of the new segment to draw
-        // Never go backward, only forward from the current position
-        const newPosition = startPosition + 
-          (targetPosition - startPosition) * easeProgress;
-        
-        // Update the base position but don't override the main animation
-        if (progress < 1) {
-          // Continue animation
-          requestAnimationFrame(animateNewPoint);
-        } else {
-          // Animation complete
-          isAnimatingNewPointRef.current = false;
-          setIsNewPoint(false);
-        }
-      };
-      
-      // Start the new point animation
-      requestAnimationFrame(animateNewPoint);
-    }
-  }, [priceData, isNewPoint, setIsNewPoint, basePosition]);
-  
-  // Calculate final line draw progress based on base position
-  useEffect(() => {
-    // We always want to show at least the most recent data
-    const visibleRange = 0.2; // Show 20% of the chart
-    
-    // Always use at least 0.95 to ensure we never reset too far back
-    setLineDrawProgress(Math.max(0.95, basePosition));
-    setVisiblePercent(visibleRange);
-  }, [basePosition]);
-  
   return {
-    lineDrawProgress, 
-    visiblePercent, 
-    basePosition
+    // Always show all but the last segment completely
+    lineDrawProgress: 1.0,  
+    // Progress of only the newest segment animation
+    newSegmentProgress,
+    isAnimatingNewSegment,
+    lastTwoPoints: lastTwoPointsRef.current
   };
-}; 
+};
+
+/**
+ * Cubic bezier easing function for smoother animations
+ */
+function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number): number {
+  // Cubic Bezier curve equation
+  const cx = 3 * x1;
+  const bx = 3 * (x2 - x1) - cx;
+  const ax = 1 - cx - bx;
+  
+  const cy = 3 * y1;
+  const by = 3 * (y2 - y1) - cy;
+  const ay = 1 - cy - by;
+  
+  const sampleCurveX = (t: number) => ((ax * t + bx) * t + cx) * t;
+  const sampleCurveY = (t: number) => ((ay * t + by) * t + cy) * t;
+  const sampleCurveDerivativeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+  
+  // Find t for a given x using Newton-Raphson method
+  let currentT = t;
+  const epsilon = 1e-6;
+  
+  for (let i = 0; i < 8; i++) {
+    const currentX = sampleCurveX(currentT) - t;
+    if (Math.abs(currentX) < epsilon) {
+      return sampleCurveY(currentT);
+    }
+    
+    const derivative = sampleCurveDerivativeX(currentT);
+    if (Math.abs(derivative) < epsilon) {
+      break;
+    }
+    
+    currentT -= currentX / derivative;
+  }
+  
+  // Fallback to linear if Newton-Raphson fails
+  return t;
+} 

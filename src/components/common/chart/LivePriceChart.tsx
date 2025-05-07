@@ -43,6 +43,8 @@ const LivePriceChart = ({
     priceChange,
     priceChangeValue,
     lastPriceRef,
+    isLoading,
+    loadingProgress
   } = useWebSocket(onPriceUpdate);
 
   const isPositiveChange = priceChange >= 0;
@@ -50,7 +52,11 @@ const LivePriceChart = ({
   const { animatedPrice } = usePriceAnimation(currentPrice, zoomPrecision);
 
   // Animate line drawing for new points with continuous animation
-  const { lineDrawProgress } = useLineDrawAnimation(
+  const { 
+    newSegmentProgress,
+    isAnimatingNewSegment,
+    lastTwoPoints
+  } = useLineDrawAnimation(
     isNewPoint,
     setIsNewPoint,
     priceData
@@ -132,7 +138,8 @@ const LivePriceChart = ({
     priceData.length < 2 ||
     !timeScale ||
     !priceScale ||
-    animatedPrice === 0
+    animatedPrice === 0 ||
+    isLoading
   ) {
     return (
       <div
@@ -141,14 +148,21 @@ const LivePriceChart = ({
         style={{ backgroundColor: COLORS.background, width, height }}
       >
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
-            style={{
-              borderColor: `${COLORS.accent} transparent ${COLORS.accent} ${COLORS.accent}`,
-            }}
-          ></div>
+          <div className="relative w-16 h-16">
+            <div
+              className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
+              style={{
+                borderColor: `${COLORS.accent} transparent ${COLORS.accent} ${COLORS.accent}`,
+              }}
+            ></div>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold" style={{ color: COLORS.accent }}>
+                {Math.round(loadingProgress * 100)}%
+              </div>
+            )}
+          </div>
           <p className="text-lg font-bold" style={{ color: COLORS.accent }}>
-            Loading Bitcoin data...
+            {isLoading ? "Loading initial price data..." : "Loading Bitcoin data..."}
           </p>
         </div>
       </div>
@@ -203,9 +217,11 @@ const LivePriceChart = ({
         strokeWidth={strokeWidth}
         circleRadius={circleRadius}
         fontSize={{ labels: fontSize.labels }}
-        lineDrawProgress={lineDrawProgress}
         priceChange={priceChange}
         darkMode={true}
+        isAnimatingNewSegment={isAnimatingNewSegment}
+        newSegmentProgress={newSegmentProgress}
+        lastTwoPoints={lastTwoPoints}
       />
 
       {/* Bottom Stats */}

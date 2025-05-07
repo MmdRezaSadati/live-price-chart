@@ -25,7 +25,7 @@ export const CHART_ANIMATION = {
    * Duration in milliseconds for drawing new line segments
    * Higher values = smoother line drawing
    */
-  LINE_DRAW_DURATION: 1200,
+  LINE_DRAW_DURATION: 3000,
   
   /**
    * Easing function for animations
@@ -37,15 +37,15 @@ export const CHART_ANIMATION = {
    * Time in milliseconds for one complete oscillation cycle
    * Higher values = smoother animation
    */
-  OSCILLATION_CYCLE: 16000,
+  OSCILLATION_CYCLE: 30000,
   
   /**
    * Range for the line drawing progress oscillation
-   * MIN = minimum percent of path shown (0.95 = 95%)
+   * MIN = minimum percent of path shown (0.9 = 90%)
    * MAX = maximum percent of path shown (1.0 = 100%)
    */
   OSCILLATION_RANGE: {
-    MIN: 0.95,
+    MIN: 0.85,
     MAX: 1.0
   }
 };

@@ -88,6 +88,12 @@ export interface PricePathProps {
   lineDrawProgress?: number;
   priceChange?: number;
   darkMode?: boolean;
+  isAnimatingNewSegment?: boolean;
+  newSegmentProgress?: number;
+  lastTwoPoints?: {
+    prev: PricePoint | null;
+    current: PricePoint | null;
+  };
 }
 
 /**
