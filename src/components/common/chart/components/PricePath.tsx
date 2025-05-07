@@ -25,6 +25,9 @@ export const PricePath = ({
   lineDrawProgress = 1.0,
   priceChange = 0,
   darkMode = true,
+  isAnimatingNewSegment = false,
+  lastTwoPoints,
+  newSegmentProgress = 0,
 }: PricePathProps) => {
   // Local reference to path element for animation
   const pathRef = useRef<SVGPathElement | null>(null);
@@ -42,19 +45,15 @@ export const PricePath = ({
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
-  // Calculate line path string based on price data
+  // Calculate line path string based on price data - showing complete path
   const linePath = useMemo(() => {
     if (!priceData || !timeScale || !priceScale) return "";
 
-    // Only include points that should be visible based on lineDrawProgress
-    const visiblePoints = priceData.slice(
-      0,
-      Math.max(2, Math.ceil(priceData.length * lineDrawProgress))
-    );
-
-    // Generate path data
+    // Generate path data for all points except the newest
     let d = "";
-    visiblePoints.forEach((point, i) => {
+    
+    // Use all data points 
+    priceData.forEach((point, i) => {
       const x = timeScale(point.timestamp);
       const y = priceScale(point.price);
 
@@ -66,7 +65,82 @@ export const PricePath = ({
     });
 
     return d;
-  }, [priceData, timeScale, priceScale, lineDrawProgress]);
+  }, [priceData, timeScale, priceScale]);
+
+  // Calculate the animated new segment if we have one
+  const animatedSegmentPath = useMemo(() => {
+    // If not animating or missing data, return empty
+    if (!isAnimatingNewSegment || !lastTwoPoints?.prev || !lastTwoPoints?.current || !timeScale || !priceScale) {
+      return "";
+    }
+
+    // Get the coordinates for the last two points
+    const prevPoint = lastTwoPoints.prev;
+    const currentPoint = lastTwoPoints.current;
+
+    // Calculate coordinates
+    const startX = timeScale(prevPoint.timestamp);
+    const startY = priceScale(prevPoint.price);
+    const endX = timeScale(currentPoint.timestamp);
+    const endY = priceScale(currentPoint.price);
+
+    // Calculate the interpolated position based on animation progress
+    const currentX = startX + (endX - startX) * newSegmentProgress;
+    const currentY = startY + (endY - startY) * newSegmentProgress;
+
+    // Create the segment path
+    return `M ${startX},${startY} L ${currentX},${currentY}`;
+  }, [isAnimatingNewSegment, lastTwoPoints, timeScale, priceScale, newSegmentProgress]);
+
+  // Calculate area path for the filled gradient area under the curve
+  const areaPath = useMemo(() => {
+    if (!priceData || !timeScale || !priceScale) return "";
+    if (priceData.length < 2) return "";
+
+    // Area path starts from the bottom-left, follows the line, and returns to bottom-right
+    let d = "";
+    const chartBottom = chartHeight - padding.y * 2 - timeAxisHeight;
+
+    // Start at the bottom left
+    const firstPoint = priceData[0];
+    const firstX = timeScale(firstPoint.timestamp);
+    d += `M ${firstX},${chartBottom}`;
+
+    // Move up to the first point
+    d += ` L ${firstX},${priceScale(firstPoint.price)}`;
+
+    // Follow the line path for all points
+    for (let i = 1; i < priceData.length; i++) {
+      const point = priceData[i];
+      const x = timeScale(point.timestamp);
+      const y = priceScale(point.price);
+      d += ` L ${x},${y}`;
+    }
+
+    // If we're animating a new segment, add the partial segment
+    if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+      const prevPoint = lastTwoPoints.prev;
+      const currentPoint = lastTwoPoints.current;
+      
+      // Calculate the interpolated position
+      const startX = timeScale(prevPoint.timestamp);
+      const endX = timeScale(currentPoint.timestamp);
+      const currentX = startX + (endX - startX) * newSegmentProgress;
+      
+      // Add the last point based on the animation progress
+      d += ` L ${currentX},${chartBottom}`;
+    } else {
+      // Add the last point at the bottom right
+      const lastPoint = priceData[priceData.length - 1];
+      const lastX = timeScale(lastPoint.timestamp);
+      d += ` L ${lastX},${chartBottom}`;
+    }
+
+    // Close the path
+    d += " Z";
+
+    return d;
+  }, [priceData, timeScale, priceScale, chartHeight, padding.y, timeAxisHeight, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
 
   // Calculate path length and position circle directly on the path
   useEffect(() => {
@@ -76,22 +150,34 @@ export const PricePath = ({
       // Get total path length
       const totalLength = pathRef.current.getTotalLength();
 
-      // Set up path animation
+      // Set up path animation with CSS transitions for smoother animation
+      pathRef.current.style.transition = "stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1)";
       pathRef.current.style.strokeDasharray = `${totalLength}`;
-      pathRef.current.style.strokeDashoffset = `${
-        totalLength * (1 - lineDrawProgress)
-      }`;
-
-      // Calculate position for circle - reduce offset to move it forward
-      const visibleLength = totalLength * lineDrawProgress;
-      const circleOffset = 5; // Reduced from 15 to 5 to move the circle forward
-      const pointPosition = visibleLength - circleOffset;
-
-      // Ensure we don't try to get a point before the start of the path
-      const finalPosition = Math.max(0, pointPosition);
-
-      // Get the point on the path at the calculated position
-      const point = pathRef.current.getPointAtLength(finalPosition);
+      
+      // Position the circle at the path end or at the animation point
+      let point;
+      
+      if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+        // Position circle at the animated point during segment animation
+        const prevPoint = lastTwoPoints.prev;
+        const currentPoint = lastTwoPoints.current;
+        
+        // Calculate the interpolated position
+        const startX = timeScale(prevPoint.timestamp);
+        const startY = priceScale(prevPoint.price);
+        const endX = timeScale(currentPoint.timestamp);
+        const endY = priceScale(currentPoint.price);
+        
+        const x = startX + (endX - startX) * newSegmentProgress;
+        const y = startY + (endY - startY) * newSegmentProgress;
+        
+        point = { x, y };
+      } else {
+        // Position at the end of the path when not animating
+        point = pathRef.current.getPointAtLength(totalLength);
+      }
+      
+      // Set circle position directly without animation
       setCirclePosition({ x: point.x, y: point.y });
     } catch (error) {
       // Only log error if we're not in a test environment
@@ -99,7 +185,7 @@ export const PricePath = ({
         console.error("Error calculating path points:", error);
       }
     }
-  }, [linePath, lineDrawProgress]);
+  }, [linePath, timeScale, priceScale, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
 
   // Grid rendering function
   const renderGrid = () => {
@@ -186,14 +272,21 @@ export const PricePath = ({
             <stop offset="0%" stopColor={fillColor} stopOpacity="0.3" />
             <stop offset="100%" stopColor={fillColor} stopOpacity="0.05" />
           </linearGradient>
-
-          {/* Clip path for area animation */}
-          <clipPath id="chartClip">
-            <path d={linePath} />
-          </clipPath>
         </defs>
 
-        {/* Price path with animation and glow */}
+        {/* Area path with gradient fill */}
+        <path
+          data-testid="price-area"
+          d={areaPath}
+          fill="url(#areaGradient)"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transition: "fill 0.7s ease-out"
+          }}
+        />
+
+        {/* Main price path */}
         <path
           data-testid="price-path"
           ref={pathRef}
@@ -202,16 +295,30 @@ export const PricePath = ({
           stroke={color}
           strokeWidth={strokeWidth}
           style={{
-            filter: `drop-shadow(0 12px 24px ${glowColor}) `,
-            strokeDasharray: lineDrawProgress < 1 ? "none" : undefined,
-            strokeDashoffset: lineDrawProgress < 1 ? "none" : undefined,
+            filter: `drop-shadow(0 12px 24px ${glowColor})`,
+            transition: "stroke 0.7s ease-out"
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="transition-colors duration-300 ease-out"
         />
 
-        {/* Circle indicator on path - positioned using getPointAtLength to ensure alignment */}
+        {/* Animated new segment - only shown during animation */}
+        {isAnimatingNewSegment && (
+          <path
+            data-testid="animated-segment"
+            d={animatedSegmentPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            style={{
+              filter: `drop-shadow(0 12px 24px ${glowColor})`
+            }}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Circle indicator on path */}
         <circle
           data-testid="indicator-circle"
           ref={circleRef}
@@ -221,11 +328,12 @@ export const PricePath = ({
           fill={"#fff"}
           stroke={darkMode ? COLORS.background : "#fff"}
           strokeWidth={strokeWidth * 0.7}
-          className="transition-colors duration-300 ease-out"
           style={{
             filter: `drop-shadow(0 0 8px ${glowColor})`,
+            transition: "fill 0.7s ease-out, stroke 0.7s ease-out"
           }}
         />
+
         {/* Time axis at the bottom of the chart */}
         <TimeAxis
           timeScale={timeScale}
