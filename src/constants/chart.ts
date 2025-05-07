@@ -61,12 +61,12 @@ export const CHART_ANIMATION = {
     /**
      * Duration in milliseconds for drawing the delayed path
      */
-    DRAW_DURATION: 2000,
+    DRAW_DURATION: 1000,
 
     /**
      * Interval in milliseconds for checking new data
      */
-    UPDATE_INTERVAL: 2000
+    UPDATE_INTERVAL: 1000
   }
 };
 

@@ -208,7 +208,7 @@ export const PricePath = ({
 
   // Calculate animation duration based on price change and zoom
   const calculateAnimationDuration = useMemo(() => {
-    if (!priceData || priceData.length < 2) return 2000; // Increased base duration
+    if (!priceData || priceData.length < 2) return 2500; // Increased base duration
 
     const lastPoint = priceData[priceData.length - 1];
     const prevPoint = priceData[priceData.length - 2];
@@ -218,21 +218,21 @@ export const PricePath = ({
       ((lastPoint.price - prevPoint.price) / prevPoint.price) * 100
     );
 
-    // Base duration is 2000ms
-    let duration = 2000;
+    // Base duration is 2500ms
+    let duration = 2500;
 
     // Adjust duration based on price change percentage
     // For small changes (< 0.1%), use longer duration
     if (priceChangePercent < 0.1) {
-      duration = 3000;
+      duration = 3500;
     }
     // For medium changes (0.1% - 1%), use medium duration
     else if (priceChangePercent < 1) {
-      duration = 2500;
+      duration = 3000;
     }
     // For large changes (> 1%), use shorter duration
     else {
-      duration = 2000;
+      duration = 2500;
     }
 
     // Adjust duration based on zoom level
@@ -244,7 +244,7 @@ export const PricePath = ({
     // Shorter range (more zoomed in) = faster animation
     if (totalRange < 3600000) {
       // Less than 1 hour
-      duration *= 0.8;
+      duration *= 0.85;
     } else if (totalRange < 86400000) {
       // Less than 1 day
       duration *= 0.9;
@@ -262,9 +262,14 @@ export const PricePath = ({
       const totalLength = pathRef.current.getTotalLength();
 
       // Set up path animation with dynamic duration
-      const duration = calculateAnimationDuration;
-      pathRef.current.style.transition = `stroke-dashoffset ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`; // Smoother easing
+      pathRef.current.style.transition = `
+        stroke-dashoffset 3s cubic-bezier(0.16, 1, 0.3, 1),
+        stroke 2s cubic-bezier(0.16, 1, 0.3, 1),
+        stroke-width 2s cubic-bezier(0.16, 1, 0.3, 1),
+        filter 2s cubic-bezier(0.16, 1, 0.3, 1)
+      `;
       pathRef.current.style.strokeDasharray = `${totalLength}`;
+      pathRef.current.style.willChange = "stroke-dashoffset, stroke, stroke-width, filter";
 
       // Position the circle at the path end or at the animation point
       let point;
@@ -428,7 +433,13 @@ export const PricePath = ({
           strokeWidth={strokeWidth}
           style={{
             filter: `drop-shadow(0 12px 24px ${glowColor})`,
-            transition: "stroke 1s cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: `
+              stroke-dashoffset 3s cubic-bezier(0.16, 1, 0.3, 1),
+              stroke 2s cubic-bezier(0.16, 1, 0.3, 1),
+              stroke-width 2s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 2s cubic-bezier(0.16, 1, 0.3, 1)
+            `,
+            willChange: "stroke-dashoffset, stroke, stroke-width, filter"
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
