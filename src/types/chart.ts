@@ -94,6 +94,9 @@ export interface PricePathProps {
     prev: PricePoint | null;
     current: PricePoint | null;
   };
+  delayedPathData?: PricePoint[];
+  delayedPathProgress?: number;
+  isAnimatingDelayedPath?: boolean;
 }
 
 /**

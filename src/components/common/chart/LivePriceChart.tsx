@@ -55,7 +55,10 @@ const LivePriceChart = ({
   const { 
     newSegmentProgress,
     isAnimatingNewSegment,
-    lastTwoPoints
+    lastTwoPoints,
+    delayedPathData,
+    delayedPathProgress,
+    isAnimatingDelayedPath
   } = useLineDrawAnimation(
     isNewPoint,
     setIsNewPoint,
@@ -222,6 +225,9 @@ const LivePriceChart = ({
         isAnimatingNewSegment={isAnimatingNewSegment}
         newSegmentProgress={newSegmentProgress}
         lastTwoPoints={lastTwoPoints}
+        delayedPathData={delayedPathData}
+        delayedPathProgress={delayedPathProgress}
+        isAnimatingDelayedPath={isAnimatingDelayedPath}
       />
 
       {/* Bottom Stats */}

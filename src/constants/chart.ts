@@ -25,7 +25,7 @@ export const CHART_ANIMATION = {
    * Duration in milliseconds for drawing new line segments
    * Higher values = smoother line drawing
    */
-  LINE_DRAW_DURATION: 3000,
+  LINE_DRAW_DURATION: 2000,
   
   /**
    * Easing function for animations
@@ -47,6 +47,26 @@ export const CHART_ANIMATION = {
   OSCILLATION_RANGE: {
     MIN: 0.85,
     MAX: 1.0
+  },
+
+  /**
+   * Delayed path animation settings
+   */
+  DELAYED_PATH: {
+    /**
+     * Number of data points to keep in buffer
+     */
+    BUFFER_SIZE: 10,
+
+    /**
+     * Duration in milliseconds for drawing the delayed path
+     */
+    DRAW_DURATION: 2000,
+
+    /**
+     * Interval in milliseconds for checking new data
+     */
+    UPDATE_INTERVAL: 2000
   }
 };
 

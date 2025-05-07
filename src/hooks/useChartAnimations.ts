@@ -156,11 +156,18 @@ export const useLineDrawAnimation = (
     current: null
   });
 
+  // Buffer for delayed path animation
+  const [delayedPathData, setDelayedPathData] = useState<PricePoint[]>([]);
+  const [delayedPathProgress, setDelayedPathProgress] = useState(0);
+  const [isAnimatingDelayedPath, setIsAnimatingDelayedPath] = useState(false);
+  const lastUpdateTimeRef = useRef<number>(0);
+
   // Monitor for new data points and animate segments
   useEffect(() => {
     if (!priceData || priceData.length < 2) return;
     
     const currentLength = priceData.length;
+    const now = performance.now();
       
     // If we have new data and we're not already animating
     if (currentLength > prevDataLengthRef.current && isNewPoint && !isAnimatingNewSegment) {
@@ -180,14 +187,14 @@ export const useLineDrawAnimation = (
       
       // Set up animation
       const startTime = performance.now();
-      const duration = 2000; // 2 seconds for smooth drawing
+      const duration = CHART_ANIMATION.LINE_DRAW_DURATION;
       
       const animateSegment = (timestamp: number) => {
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
-        // Use a custom easing function for very smooth animation
-        const easedProgress = easeInOutCubic(progress);
+        // Use the smoothest easing function
+        const easedProgress = easeInOutQuint(progress);
         
         // Update the segment drawing progress
         setNewSegmentProgress(easedProgress);
@@ -215,6 +222,46 @@ export const useLineDrawAnimation = (
     
     // Update the previous length
     prevDataLengthRef.current = currentLength;
+
+    // Handle delayed path animation
+    if (now - lastUpdateTimeRef.current >= CHART_ANIMATION.DELAYED_PATH.UPDATE_INTERVAL) {
+      lastUpdateTimeRef.current = now;
+
+      // Get the last BUFFER_SIZE points from the current data
+      const newDelayedData = priceData.slice(-CHART_ANIMATION.DELAYED_PATH.BUFFER_SIZE);
+      
+      // Start new delayed path animation
+      setDelayedPathData(newDelayedData);
+      setDelayedPathProgress(0);
+      setIsAnimatingDelayedPath(true);
+
+      const startTime = now;
+      const duration = CHART_ANIMATION.DELAYED_PATH.DRAW_DURATION;
+
+      const animateDelayedPath = (timestamp: number) => {
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Use the smoothest easing function
+        const easedProgress = easeInOutQuint(progress);
+        
+        // Update the delayed path progress
+        setDelayedPathProgress(easedProgress);
+        
+        if (progress < 1) {
+          // Continue animation
+          animationRef.current = requestAnimationFrame(animateDelayedPath);
+        } else {
+          // Animation complete
+          setDelayedPathProgress(1.0);
+          setIsAnimatingDelayedPath(false);
+          animationRef.current = null;
+        }
+      };
+
+      // Start the delayed path animation
+      animationRef.current = requestAnimationFrame(animateDelayedPath);
+    }
   }, [priceData, isNewPoint, setIsNewPoint, isAnimatingNewSegment]);
   
   // Clean up any animations on unmount
@@ -232,13 +279,34 @@ export const useLineDrawAnimation = (
     // Progress of only the newest segment animation
     newSegmentProgress,
     isAnimatingNewSegment,
-    lastTwoPoints: lastTwoPointsRef.current
+    lastTwoPoints: lastTwoPointsRef.current,
+    // Delayed path animation state
+    delayedPathData,
+    delayedPathProgress,
+    isAnimatingDelayedPath
   };
 };
 
 // Custom easing function for smooth animation
 function easeInOutCubic(x: number): number {
-  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  // Using a more sophisticated easing function for smoother animation
+  return x < 0.5
+    ? 4 * x * x * x
+    : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
+// Custom easing function for even smoother animation
+function easeInOutQuart(x: number): number {
+  return x < 0.5
+    ? 8 * x * x * x * x
+    : 1 - Math.pow(-2 * x + 2, 4) / 2;
+}
+
+// Custom easing function for the smoothest animation
+function easeInOutQuint(x: number): number {
+  return x < 0.5
+    ? 16 * x * x * x * x * x
+    : 1 - Math.pow(-2 * x + 2, 5) / 2;
 }
 
 /**

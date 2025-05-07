@@ -28,10 +28,14 @@ export const PricePath = ({
   isAnimatingNewSegment = false,
   lastTwoPoints,
   newSegmentProgress = 0,
+  delayedPathData = [],
+  delayedPathProgress = 0,
+  isAnimatingDelayedPath = false,
 }: PricePathProps) => {
   // Local reference to path element for animation
   const pathRef = useRef<SVGPathElement | null>(null);
   const circleRef = useRef<SVGCircleElement | null>(null);
+  const delayedPathRef = useRef<SVGPathElement | null>(null);
 
   // State for circle position
   const [circlePosition, setCirclePosition] = useState({ x: 0, y: 0 });
@@ -51,8 +55,8 @@ export const PricePath = ({
 
     // Generate path data for all points except the newest
     let d = "";
-    
-    // Use all data points 
+
+    // Use all data points
     priceData.forEach((point, i) => {
       const x = timeScale(point.timestamp);
       const y = priceScale(point.price);
@@ -67,10 +71,50 @@ export const PricePath = ({
     return d;
   }, [priceData, timeScale, priceScale]);
 
+  // Calculate delayed path string
+  const delayedPath = useMemo(() => {
+    if (
+      !delayedPathData ||
+      !timeScale ||
+      !priceScale ||
+      delayedPathData.length < 2
+    )
+      return "";
+
+    let d = "";
+
+    // Calculate how many points to show based on progress
+    const totalPoints = delayedPathData.length;
+    const visiblePoints = Math.max(
+      2,
+      Math.ceil(totalPoints * delayedPathProgress)
+    );
+
+    // Generate path data for visible points
+    delayedPathData.slice(0, visiblePoints).forEach((point, i) => {
+      const x = timeScale(point.timestamp);
+      const y = priceScale(point.price);
+
+      if (i === 0) {
+        d += `M ${x},${y}`;
+      } else {
+        d += ` L ${x},${y}`;
+      }
+    });
+
+    return d;
+  }, [delayedPathData, timeScale, priceScale, delayedPathProgress]);
+
   // Calculate the animated new segment if we have one
   const animatedSegmentPath = useMemo(() => {
     // If not animating or missing data, return empty
-    if (!isAnimatingNewSegment || !lastTwoPoints?.prev || !lastTwoPoints?.current || !timeScale || !priceScale) {
+    if (
+      !isAnimatingNewSegment ||
+      !lastTwoPoints?.prev ||
+      !lastTwoPoints?.current ||
+      !timeScale ||
+      !priceScale
+    ) {
       return "";
     }
 
@@ -90,7 +134,13 @@ export const PricePath = ({
 
     // Create the segment path
     return `M ${startX},${startY} L ${currentX},${currentY}`;
-  }, [isAnimatingNewSegment, lastTwoPoints, timeScale, priceScale, newSegmentProgress]);
+  }, [
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    timeScale,
+    priceScale,
+    newSegmentProgress,
+  ]);
 
   // Calculate area path for the filled gradient area under the curve
   const areaPath = useMemo(() => {
@@ -118,15 +168,19 @@ export const PricePath = ({
     }
 
     // If we're animating a new segment, add the partial segment
-    if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+    if (
+      isAnimatingNewSegment &&
+      lastTwoPoints?.prev &&
+      lastTwoPoints?.current
+    ) {
       const prevPoint = lastTwoPoints.prev;
       const currentPoint = lastTwoPoints.current;
-      
+
       // Calculate the interpolated position
       const startX = timeScale(prevPoint.timestamp);
       const endX = timeScale(currentPoint.timestamp);
       const currentX = startX + (endX - startX) * newSegmentProgress;
-      
+
       // Add the last point based on the animation progress
       d += ` L ${currentX},${chartBottom}`;
     } else {
@@ -140,7 +194,64 @@ export const PricePath = ({
     d += " Z";
 
     return d;
-  }, [priceData, timeScale, priceScale, chartHeight, padding.y, timeAxisHeight, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
+  }, [
+    priceData,
+    timeScale,
+    priceScale,
+    chartHeight,
+    padding.y,
+    timeAxisHeight,
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    newSegmentProgress,
+  ]);
+
+  // Calculate animation duration based on price change and zoom
+  const calculateAnimationDuration = useMemo(() => {
+    if (!priceData || priceData.length < 2) return 2000; // Increased base duration
+
+    const lastPoint = priceData[priceData.length - 1];
+    const prevPoint = priceData[priceData.length - 2];
+    
+    // Calculate price change percentage
+    const priceChangePercent = Math.abs(
+      ((lastPoint.price - prevPoint.price) / prevPoint.price) * 100
+    );
+
+    // Base duration is 2000ms
+    let duration = 2000;
+
+    // Adjust duration based on price change percentage
+    // For small changes (< 0.1%), use longer duration
+    if (priceChangePercent < 0.1) {
+      duration = 3000;
+    }
+    // For medium changes (0.1% - 1%), use medium duration
+    else if (priceChangePercent < 1) {
+      duration = 2500;
+    }
+    // For large changes (> 1%), use shorter duration
+    else {
+      duration = 2000;
+    }
+
+    // Adjust duration based on zoom level
+    // Get the visible time range from timeScale
+    const timeRange = timeScale.domain();
+    const totalRange = timeRange[1] - timeRange[0];
+    
+    // Adjust duration based on visible time range
+    // Shorter range (more zoomed in) = faster animation
+    if (totalRange < 3600000) {
+      // Less than 1 hour
+      duration *= 0.8;
+    } else if (totalRange < 86400000) {
+      // Less than 1 day
+      duration *= 0.9;
+    }
+
+    return duration;
+  }, [priceData, timeScale]);
 
   // Calculate path length and position circle directly on the path
   useEffect(() => {
@@ -150,42 +261,63 @@ export const PricePath = ({
       // Get total path length
       const totalLength = pathRef.current.getTotalLength();
 
-      // Set up path animation with CSS transitions for smoother animation
-      pathRef.current.style.transition = "stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1)";
+      // Set up path animation with dynamic duration
+      const duration = calculateAnimationDuration;
+      pathRef.current.style.transition = `stroke-dashoffset ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`; // Smoother easing
       pathRef.current.style.strokeDasharray = `${totalLength}`;
-      
+
       // Position the circle at the path end or at the animation point
       let point;
-      
-      if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+
+      if (
+        isAnimatingNewSegment &&
+        lastTwoPoints?.prev &&
+        lastTwoPoints?.current
+      ) {
         // Position circle at the animated point during segment animation
         const prevPoint = lastTwoPoints.prev;
         const currentPoint = lastTwoPoints.current;
-        
-        // Calculate the interpolated position
+
+        // Calculate the interpolated position with improved precision
         const startX = timeScale(prevPoint.timestamp);
         const startY = priceScale(prevPoint.price);
         const endX = timeScale(currentPoint.timestamp);
         const endY = priceScale(currentPoint.price);
-        
-        const x = startX + (endX - startX) * newSegmentProgress;
-        const y = startY + (endY - startY) * newSegmentProgress;
-        
+
+        // Use a more precise interpolation for smoother movement
+        const progress = Math.min(Math.max(newSegmentProgress, 0), 1);
+        const x = startX + (endX - startX) * progress;
+        const y = startY + (endY - startY) * progress;
+
+        point = { x, y };
+      } else if (priceData.length > 0) {
+        // For non-animating state, use the last point
+        const lastPoint = priceData[priceData.length - 1];
+        const x = timeScale(lastPoint.timestamp);
+        const y = priceScale(lastPoint.price);
         point = { x, y };
       } else {
-        // Position at the end of the path when not animating
+        // Fallback to path end if no data
         point = pathRef.current.getPointAtLength(totalLength);
       }
-      
-      // Set circle position directly without animation
+
+      // Set circle position with improved animation
       setCirclePosition({ x: point.x, y: point.y });
     } catch (error) {
-      // Only log error if we're not in a test environment
       if (process.env.NODE_ENV !== "test") {
         console.error("Error calculating path points:", error);
       }
     }
-  }, [linePath, timeScale, priceScale, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
+  }, [
+    linePath,
+    timeScale,
+    priceScale,
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    newSegmentProgress,
+    priceData,
+    calculateAnimationDuration,
+  ]);
 
   // Grid rendering function
   const renderGrid = () => {
@@ -282,7 +414,7 @@ export const PricePath = ({
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{
-            transition: "fill 0.7s ease-out"
+            transition: "fill 0.7s ease-out",
           }}
         />
 
@@ -296,11 +428,31 @@ export const PricePath = ({
           strokeWidth={strokeWidth}
           style={{
             filter: `drop-shadow(0 12px 24px ${glowColor})`,
-            transition: "stroke 0.7s ease-out"
+            transition: "stroke 1s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+
+        {/* Delayed path */}
+        {isAnimatingDelayedPath && (
+          <path
+            data-testid="delayed-path"
+            ref={delayedPathRef}
+            d={delayedPath}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            style={{
+              filter: `drop-shadow(0 12px 24px ${glowColor})`,
+              opacity: 0.7,
+              transition:
+                "stroke 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
 
         {/* Animated new segment - only shown during animation */}
         {isAnimatingNewSegment && (
@@ -311,7 +463,8 @@ export const PricePath = ({
             stroke={color}
             strokeWidth={strokeWidth}
             style={{
-              filter: `drop-shadow(0 12px 24px ${glowColor})`
+              filter: `drop-shadow(0 12px 24px ${glowColor})`,
+              transition: "stroke 1s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -330,7 +483,11 @@ export const PricePath = ({
           strokeWidth={strokeWidth * 0.7}
           style={{
             filter: `drop-shadow(0 0 8px ${glowColor})`,
-            transition: "fill 0.7s ease-out, stroke 0.7s ease-out"
+            transition: isAnimatingNewSegment
+              ? "none" // Disable transition during segment animation for precise movement
+              : "fill 0.1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.1s cubic-bezier(0.4, 0, 0.2, 1), cx 0.1s cubic-bezier(0.4, 0, 0.2, 1), cy 0.1s cubic-bezier(0.4, 0, 0.2, 1)",
+            willChange: "transform",
+            transform: "translateZ(0)", // Force GPU acceleration
           }}
         />
 
