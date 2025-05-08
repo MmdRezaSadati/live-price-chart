@@ -192,9 +192,10 @@ export const useLineDrawAnimation = (
       const animateSegment = (timestamp: number) => {
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
-        // Use the smoothest easing function
-        const easedProgress = easeInOutQuint(progress);
+        // Use cubic-bezier for smoother animation
+        // Parameters optimized for extra smooth drawing (0.25, 0.05, 0.1, 1.0)
+        // These parameters create a more gradual start and smoother finish
+        const easedProgress = cubicBezier(0.25, 0.05, 0.1, 1.0, progress);
         
         // Update the segment drawing progress
         setNewSegmentProgress(easedProgress);
@@ -242,8 +243,9 @@ export const useLineDrawAnimation = (
         const elapsed = timestamp - startTime;
         const progress = Math.min(elapsed / duration, 1);
         
-        // Use the smoothest easing function
-        const easedProgress = easeInOutQuint(progress);
+        // Use cubic-bezier for smoother animation
+        // Parameters optimized for extra smooth drawing (0.4, 0.0, 0.2, 1.0)
+        const easedProgress = cubicBezier(0.4, 0.0, 0.2, 1.0, progress);
         
         // Update the delayed path progress
         setDelayedPathProgress(easedProgress);
@@ -346,4 +348,4 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number, t: number):
   
   // Fallback to linear if Newton-Raphson fails
   return t;
-} 
+}

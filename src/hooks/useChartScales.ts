@@ -62,12 +62,17 @@ export const useChartScales = (
     
     // Add padding to the right side
     const rightPadding = padding.x * 4;
+
+    const now = Date.now();
+    const sixtySecondsAgo = now - 60000; // 60 seconds in milliseconds
+    
+    const domain = [
+      Math.max(sixtySecondsAgo, d3.min(priceData, d => d.timestamp) ?? 0),
+      now
+    ];
     
     return scaleLinear({
-      domain: [
-        d3.min(priceData, d => d.timestamp) ?? 0,
-        d3.max(priceData, d => d.timestamp) ?? 0
-      ],
+      domain,
       range: [padding.x, width - rightPadding],
     });
   }, [priceData, width, padding.x]);
@@ -145,4 +150,4 @@ export const useChartScales = (
     constrainPrice,
     generatePath,
   };
-}; 
+};

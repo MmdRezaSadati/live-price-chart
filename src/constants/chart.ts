@@ -25,13 +25,13 @@ export const CHART_ANIMATION = {
    * Duration in milliseconds for drawing new line segments
    * Higher values = smoother line drawing
    */
-  LINE_DRAW_DURATION: 2000,
+  LINE_DRAW_DURATION: 1000,
   
   /**
    * Easing function for animations
    * 'cubic' = cubic-bezier ease out
    */
-  LINE_EASING: 'cubic',
+  LINE_EASING: 'cubic-bezier',
   
   /**
    * Time in milliseconds for one complete oscillation cycle
@@ -92,4 +92,4 @@ export const CHART_STATS = [
   { label: '24h Vol', value: '$29.8B' },
   { label: '24h High', value: '$54,321' },
   { label: '24h Low', value: '$51,234' },
-]; 
+];
