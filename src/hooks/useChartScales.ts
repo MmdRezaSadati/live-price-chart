@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState, useEffect } from 'react';
 import * as d3 from 'd3';
 import { scaleLinear } from '@visx/scale';
 import { PricePoint } from '@/types/chart';
@@ -56,26 +56,27 @@ export const useChartScales = (
     return Math.max(zoomPrecision, dataRange + buffer);
   }, [priceData, zoomPrecision]);
 
-  // Time scale (X-axis)
-  const timeScale = useMemo(() => {
-    if (priceData.length < 2) return null;
-    
-    // Add padding to the right side
-    const rightPadding = padding.x * 4;
+  // Time scale (X-axis) - Continuous animation independent of data
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
-    const now = Date.now();
-    const sixtySecondsAgo = now - 60000; // 60 seconds in milliseconds
-    
-    const domain = [
-      Math.max(sixtySecondsAgo, d3.min(priceData, d => d.timestamp) ?? 0),
-      now
-    ];
+  // Update time scale continuously
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 16); // ~60fps for smooth animation
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const timeScale = useMemo(() => {
+    const rightPadding = padding.x * 2;
+    const windowSize = 40000; // 40 seconds window
     
     return scaleLinear({
-      domain,
-      range: [padding.x, width - rightPadding],
+      domain: [currentTime - windowSize, currentTime],
+      range: [0, width - rightPadding],
     });
-  }, [priceData, width, padding.x]);
+  }, [width, padding.x, currentTime]); // Remove priceData dependency
 
   // Find the price range for scaling
   const priceRangeBounds = useMemo(() => {
@@ -138,7 +139,7 @@ export const useChartScales = (
         const constrainedPrice = constrainPrice(d.price);
         return priceScale(constrainedPrice);
       })
-      .curve(d3.curveCatmullRom.alpha(0.5)); // Smooth curve
+      .curve(d3.curveMonotoneX); // Smooth curve with monotonic interpolation
     
     return lineGenerator(data) || '';
   }, [timeScale, priceScale, constrainPrice]);
