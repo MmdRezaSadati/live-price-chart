@@ -20,6 +20,8 @@ export interface PathCalculationProps {
   newSegmentProgress: number;
   delayedPathData?: PricePoint[];
   delayedPathProgress: number;
+  curve?: d3.CurveFactory;
+  interpolationPoints?: number;
 }
 
 export const useChartPathCalculation = ({
@@ -34,6 +36,8 @@ export const useChartPathCalculation = ({
   newSegmentProgress,
   delayedPathData = [],
   delayedPathProgress,
+  curve = d3.curveBasis,
+  interpolationPoints = 100,
 }: PathCalculationProps) => {
   // Calculate line path string based on price data
   const linePath = useMemo(() => {
@@ -42,15 +46,61 @@ export const useChartPathCalculation = ({
     // Convert data to appropriate format for d3.line
     const formattedData: [number, number][] = priceData.map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
 
-    // Create path with d3.line and curveCardinal
+    // Create path with d3.line and specified curve
     const lineGenerator = d3
       .line()
       .x((d) => d[0])
       .y((d) => d[1])
-      .curve(d3.curveCardinal);
+      .curve(curve);
+
+    // Add interpolation points for smoother curves
+    if (interpolationPoints > 0) {
+      const interpolatedData: [number, number][] = [];
+      
+      // Add control points at the start and end for smoother curves
+      if (formattedData.length > 0) {
+        const firstPoint = formattedData[0];
+        const secondPoint = formattedData[1];
+        const controlPoint1 = [
+          firstPoint[0] - (secondPoint[0] - firstPoint[0]) * 0.5,
+          firstPoint[1] - (secondPoint[1] - firstPoint[1]) * 0.5,
+        ];
+        interpolatedData.push(controlPoint1 as [number, number]);
+      }
+
+      // Add main points with interpolation
+      for (let i = 0; i < formattedData.length - 1; i++) {
+        const current = formattedData[i];
+        const next = formattedData[i + 1];
+        interpolatedData.push(current);
+        
+        // Add interpolation points between current and next point
+        for (let j = 1; j <= interpolationPoints; j++) {
+          const t = j / (interpolationPoints + 1);
+          // Use cubic interpolation for smoother curves
+          const x = current[0] + (next[0] - current[0]) * t;
+          const y = current[1] + (next[1] - current[1]) * t;
+          interpolatedData.push([x, y]);
+        }
+      }
+
+      // Add control point at the end
+      if (formattedData.length > 1) {
+        const lastPoint = formattedData[formattedData.length - 1];
+        const secondLastPoint = formattedData[formattedData.length - 2];
+        const controlPoint2 = [
+          lastPoint[0] + (lastPoint[0] - secondLastPoint[0]) * 0.5,
+          lastPoint[1] + (lastPoint[1] - secondLastPoint[1]) * 0.5,
+        ];
+        interpolatedData.push(lastPoint);
+        interpolatedData.push(controlPoint2 as [number, number]);
+      }
+
+      return lineGenerator(interpolatedData) || "";
+    }
 
     return lineGenerator(formattedData) || "";
-  }, [priceData, timeScale, priceScale]);
+  }, [priceData, timeScale, priceScale, curve, interpolationPoints]);
 
   // Calculate delayed path string
   const delayedPath = useMemo(() => {

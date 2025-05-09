@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { PricePathProps } from "../../../../types/chart";
 import { COLORS } from "@/constants/chart";
 import { TimeAxis } from "./TimeAxis";
+import { curveBasis, curveMonotoneX } from "d3-shape";
+import * as d3 from "d3";
 
 import { PricePathLine } from "./PricePathLine";
 import { PricePathArea } from "./PricePathArea";
@@ -42,62 +44,19 @@ export const PricePath = ({
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
-  // State for circle position with initial value from last data point
-  const [circlePosition, setCirclePosition] = useState(() => {
-    if (
-      isAnimatingNewSegment &&
-      lastTwoPoints?.prev &&
-      lastTwoPoints?.current &&
-      timeScale &&
-      priceScale
-    ) {
-      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
-      const startX = timeScale(prevPoint.timestamp);
-      const startY = priceScale(prevPoint.price);
-      const endX = timeScale(currentPoint.timestamp);
-      const endY = priceScale(currentPoint.price);
-      return {
-        x: startX + (endX - startX) * newSegmentProgress,
-        y: startY + (endY - startY) * newSegmentProgress,
-      };
-    } else if (priceData.length > 0 && timeScale && priceScale) {
-      const lastPoint = priceData[priceData.length - 1];
-      return {
-        x: timeScale(lastPoint.timestamp),
-        y: priceScale(lastPoint.price),
-      };
+  // Calculate circle position directly from the last data point using useMemo
+  const circlePosition = useMemo(() => {
+    if (!priceData.length || !timeScale || !priceScale) {
+      return { x: 0, y: 0 };
     }
-    return { x: 0, y: 0 };
-  });
+    const lastPoint = priceData[priceData.length - 1];
+    return {
+      x: timeScale(lastPoint.timestamp),
+      y: priceScale(lastPoint.price),
+    };
+  }, [priceData, timeScale, priceScale]);
 
-  // Synchronizing circle movement with path animation
-  useEffect(() => {
-    if (!timeScale || !priceScale) return;
-
-    if (
-      isAnimatingNewSegment &&
-      lastTwoPoints?.prev &&
-      lastTwoPoints?.current
-    ) {
-      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
-      const startX = timeScale(prevPoint.timestamp);
-      const startY = priceScale(prevPoint.price);
-      const endX = timeScale(currentPoint.timestamp);
-      const endY = priceScale(currentPoint.price);
-      setCirclePosition({
-        x: startX + (endX - startX) * newSegmentProgress,
-        y: startY + (endY - startY) * newSegmentProgress,
-      });
-    } else if (priceData.length > 0) {
-      const lastPoint = priceData[priceData.length - 1];
-      setCirclePosition({
-        x: timeScale(lastPoint.timestamp),
-        y: priceScale(lastPoint.price),
-      });
-    }
-  }, [timeScale, priceScale, priceData, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
-
-  // Calculate all path data using the hook
+  // Calculate all path data using the hook with enhanced smoothing
   const { linePath, delayedPath, animatedSegmentPath, areaPath } =
     useChartPathCalculation({
       priceData,
@@ -111,6 +70,8 @@ export const PricePath = ({
       newSegmentProgress,
       delayedPathData,
       delayedPathProgress,
+      curve: d3.curveCatmullRom.alpha(0.5),
+      interpolationPoints: 50,
     });
 
   // Grid rendering function
