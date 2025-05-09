@@ -75,7 +75,7 @@ export const useChartScales = (
     const rightPadding = padding.x * 4;
 
     const now = Date.now();
-    const sixtySecondsAgo = now - 40000;
+    const sixtySecondsAgo = now - 30000;
     
     const domain = [
       Math.max(sixtySecondsAgo, d3.min(priceData, d => d.timestamp) ?? 0),

@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
-import { PricePoint } from '../../../../types/chart';
-import { D3ScaleFunction } from '../../../../types/chart';
-import { COLORS } from '@/constants/chart';
+import * as d3 from "d3";
+import { interpolatePath } from "d3-interpolate-path";
+import React, { useEffect, useRef } from "react";
 
 interface PricePathLineProps {
   linePath: string;
@@ -26,10 +25,16 @@ export const PricePathLine: React.FC<PricePathLineProps> = ({
     if (!pathRef.current) return;
 
     try {
+     // We store the previous path value in a ref so we always have the actual previous path
+      const prevPathRef = (pathRef.current as any)._prevPathRef || { current: "" };
+      if (!(pathRef.current as any)._prevPathRef) {
+        (pathRef.current as any)._prevPathRef = prevPathRef;
+      }
+      const oldPath = prevPathRef.current || "";
+      prevPathRef.current = linePath;
+
       // Get total path length
       const totalLength = pathRef.current.getTotalLength();
-
-      // Set up path animation with optimized timing and easing
       pathRef.current.style.transition = `
         stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
         stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
@@ -37,10 +42,24 @@ export const PricePathLine: React.FC<PricePathLineProps> = ({
         filter 0.3s cubic-bezier(0.4, 0, 0.2, 1)
       `;
       pathRef.current.style.strokeDasharray = `${totalLength}`;
-      pathRef.current.style.willChange = 'stroke-dashoffset, stroke, stroke-width, filter';
+      pathRef.current.style.willChange =
+        "stroke-dashoffset, stroke, stroke-width, filter";
+
+      // --- d3.interpolatePath animation ---
+      const pathElement = d3.select(pathRef.current);
+      pathElement
+        .transition()
+        .duration(30)
+        .attrTween("d", function () {
+          const interpolator = interpolatePath(oldPath, linePath);
+          return function (t) {
+            return interpolator(t);
+          };
+        });
+      // --- پایان انیمیشن ---
     } catch (error) {
-      if (process.env.NODE_ENV !== 'test') {
-        console.error('Error calculating path points:', error);
+      if (process.env.NODE_ENV !== "test") {
+        console.error("Error calculating path points:", error);
       }
     }
   }, [linePath]);
@@ -61,7 +80,7 @@ export const PricePathLine: React.FC<PricePathLineProps> = ({
           stroke-width 0.3s cubic-bezier(0.16, 1, 0.3, 1),
           filter 0.3s cubic-bezier(0.16, 1, 0.3, 1)
         `,
-        willChange: 'stroke-dashoffset, stroke, stroke-width, filter',
+        willChange: "stroke-dashoffset, stroke, stroke-width, filter",
       }}
       strokeLinecap="round"
       strokeLinejoin="round"

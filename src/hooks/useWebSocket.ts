@@ -1,21 +1,21 @@
 "use client";
 
-import { BITCOIN_SYMBOL, MAX_DATA_POINTS } from "@/constants/chart";
+import { MAX_DATA_POINTS } from "@/constants/chart";
 import { PricePoint } from "@/types/chart";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Number of initial price points to collect before showing the chart
-const INITIAL_PRICE_BUFFER_SIZE = 50;
+const INITIAL_PRICE_BUFFER_SIZE = 10;
 
 /**
  * Custom hook for managing WebSocket connection with Binance
- * Handles connection, data throttling, and cleanup
+ * Handles connection, data throttling, heartbeat, and cleanup
  *
  * @param onPriceUpdate Callback function that receives the new price
  * @returns State and data related to the WebSocket connection
  */
 export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
-  // State for storing price data
+  // State for storing price data and metadata
   const [priceData, setPriceData] = useState<PricePoint[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [isNewPoint, setIsNewPoint] = useState(false);
@@ -23,205 +23,118 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [priceChange, setPriceChange] = useState(0);
+  const [priceChangeValue, setPriceChangeValue] = useState(0);
 
-  // Track initial price for calculating change
-  const initialPriceRef = useRef<number | null>(null);
-  const [priceChange, setPriceChange] = useState<number>(0);
-  const [priceChangeValue, setPriceChangeValue] = useState<number>(0);
-
-  // References for WebSocket and last price
+  // Refs to persist across renders
   const socketRef = useRef<WebSocket | null>(null);
-  const isInitialMount = useRef(true);
-  const lastPointRef = useRef<PricePoint | null>(null);
   const lastPriceRef = useRef<number | null>(null);
-  const lastUpdateTimeRef = useRef<number>(Date.now());
+  const initialPriceRef = useRef<number | null>(null);
   const initialPriceBuffer = useRef<PricePoint[]>([]);
-  
-  // Use a throttled update to avoid too many re-renders
   const lastAdditionRef = useRef<number>(0);
 
-  /**
-   * Process new price data and calculate changes
-   *
-   * @param newPrice Latest price from WebSocket
-   */
-  const setChartColorEverywhere = useCallback((newPrice: number) => {
-    // Always update last price first
-    const lastPrice = lastPriceRef.current;
+  // Calculate percentage and absolute change since initial price
+  const updateMetrics = useCallback((newPrice: number) => {
+    const last = lastPriceRef.current;
     lastPriceRef.current = newPrice;
-
-    if (lastPrice === null) {
-      // First price - save as initial
+    if (last === null) {
       initialPriceRef.current = newPrice;
       return;
     }
-
-    // Calculate price change percentage since session start
     if (initialPriceRef.current !== null) {
-      const changeValue = newPrice - initialPriceRef.current;
-      const changePercent = (changeValue / initialPriceRef.current) * 100;
-      setPriceChange(changePercent);
-      setPriceChangeValue(changeValue);
+      const delta = newPrice - initialPriceRef.current;
+      setPriceChangeValue(delta);
+      setPriceChange((delta / initialPriceRef.current) * 100);
     }
   }, []);
 
-  // Set up WebSocket connection
   useEffect(() => {
-    if (typeof window === "undefined") return; // Skip on server-side
+    if (typeof window === "undefined") return;
 
-    // Only establish connection if it's the initial mount or we need to reconnect
-    if (!isInitialMount.current && socketRef.current) {
-      return;
-    }
-
-    // Close previous connection if it exists
-    if (socketRef.current) {
-      socketRef.current.close();
-    }
-
-    // Variables for throttling data updates
     let latestPrice: number | null = null;
     let latestTimestamp: number | null = null;
-    let throttleTimer: NodeJS.Timeout | null = null;
+    let throttleTimer: NodeJS.Timeout;
 
-    // Set up regular updates with throttling
-    const setupRegularUpdates = () => {
-      if (throttleTimer) {
-        clearInterval(throttleTimer);
-      }
+    const symbol = process.env.NEXT_PUBLIC_BITCOIN_SYMBOL ?? "btcusdt";
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol}@trade`);
+    socketRef.current = ws;
 
-      throttleTimer = setInterval(() => {
-        if (latestPrice !== null && latestTimestamp !== null) {
-          updatePriceData(latestPrice, latestTimestamp);
-        }
-      }, 200); // Update every 200ms at most
-    };
-
-    // Process incoming price data
-    const updatePriceData = (price: number, timestamp: number) => {
-      const newPoint = { timestamp, price };
-      lastPointRef.current = newPoint;
-      setChartColorEverywhere(price);
+    const processPoint = (price: number, timestamp: number) => {
+      const point: PricePoint = { price, timestamp };
+      updateMetrics(price);
       setCurrentPrice(price);
-      lastUpdateTimeRef.current = Date.now();
 
-      // When in loading state, buffer the initial price points
+      // Buffering for initial load
       if (isLoading) {
-        // Only add a point if it's sufficiently different from the last one
-        // This prevents duplicate points that don't add visual information
-        const lastPoint = initialPriceBuffer.current[initialPriceBuffer.current.length - 1];
-        
-        if (!lastPoint || Math.abs(price - lastPoint.price) > 0.5 || 
-            timestamp - lastPoint.timestamp > 100) {
-          initialPriceBuffer.current.push(newPoint);
-          const progress = Math.min(1, initialPriceBuffer.current.length / INITIAL_PRICE_BUFFER_SIZE);
-          setLoadingProgress(progress);
-          
-          // Once we've collected enough points, set them all at once and exit loading state
+        const last = initialPriceBuffer.current[initialPriceBuffer.current.length - 1];
+        if (!last || Math.abs(price - last.price) > 0.5 || timestamp - last.timestamp > 100) {
+          initialPriceBuffer.current.push(point);
+          setLoadingProgress(
+            Math.min(1, initialPriceBuffer.current.length / INITIAL_PRICE_BUFFER_SIZE)
+          );
           if (initialPriceBuffer.current.length >= INITIAL_PRICE_BUFFER_SIZE) {
-            // Sort by timestamp to ensure proper order
-            const sortedData = [...initialPriceBuffer.current].sort((a, b) => a.timestamp - b.timestamp);
-            
-            // Set all data at once
-            setPriceData(sortedData.slice(-MAX_DATA_POINTS));
+            const sorted = [...initialPriceBuffer.current].sort((a, b) => a.timestamp - b.timestamp);
+            setPriceData(sorted.slice(-MAX_DATA_POINTS));
             setIsLoading(false);
           }
-          return;
         }
         return;
       }
 
-      // Update the price data array once loading is complete
-      // Only add a new point every 200ms to avoid too frequent updates
+      // Throttled updates after load
       const now = Date.now();
       if (now - lastAdditionRef.current > 200) {
-      setPriceData((prevData) => {
-          const newData = [...prevData, newPoint];
-        setIsNewPoint(true);
+        setPriceData((prev) => {
+          const updated = [...prev, point];
+          setIsNewPoint(true);
           lastAdditionRef.current = now;
-        return newData.length > MAX_DATA_POINTS
-          ? newData.slice(-MAX_DATA_POINTS)
-          : newData;
-      });
+          return updated.length > MAX_DATA_POINTS ? updated.slice(-MAX_DATA_POINTS) : updated;
+        });
       }
     };
 
-    // Connect to Binance WebSocket
-    try {
-      // Set loading state when connecting
-      setIsLoading(true);
-      setLoadingProgress(0);
-      initialPriceBuffer.current = [];
-      
-      const ws = new WebSocket(
-        `wss://stream.binance.com:9443/ws/${BITCOIN_SYMBOL}@trade`
-      );
-
-      ws.onopen = () => {
-        console.log("Connection established with Binance Bitcoin feed");
-        setIsConnected(true);
-        setError(null);
-        setupRegularUpdates();
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const newPrice = parseFloat(data.p);
-        const timestamp = data.T;
-
-        // Store latest values for throttled updates
-        latestPrice = newPrice;
-        latestTimestamp = timestamp;
-      };
-
-      ws.onerror = (event: Event) => {
-        console.error("WebSocket error:", event);
-        setError(new Error("WebSocket encountered an error"));
-        setIsConnected(false);
-        setIsLoading(false);
-      };
-
-      ws.onclose = () => {
-        console.log("Connection closed");
-        setIsConnected(false);
-        setIsLoading(false);
-        if (throttleTimer) {
-          clearInterval(throttleTimer);
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setIsConnected(true);
+      // Throttle loop
+      throttleTimer = setInterval(() => {
+        if (latestPrice !== null && latestTimestamp !== null) {
+          processPoint(latestPrice, latestTimestamp);
         }
-      };
+      }, 200);
+    };
 
-      socketRef.current = ws;
-      isInitialMount.current = false;
-    } catch (e: unknown) {
-      console.error("Error connecting to WebSocket:", e);
-      if (e instanceof Error) {
-        setError(e);
-      } else {
-        setError(new Error(String(e)));
-      }
+    ws.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      latestPrice = parseFloat(msg.p);
+      latestTimestamp = msg.T;
+    };
+
+    ws.onerror = (e) => {
+      console.error("WebSocket error", e);
+      setError(new Error("WebSocket encountered an error"));
       setIsConnected(false);
-      setIsLoading(false);
-    }
+      clearInterval(throttleTimer);
+    };
+
+    ws.onclose = (ev) => {
+      console.warn("WebSocket closed", ev.code, ev.reason);
+      setIsConnected(false);
+      clearInterval(throttleTimer);
+    };
 
     // Cleanup on unmount
     return () => {
-      if (throttleTimer) {
-        clearInterval(throttleTimer);
-      }
-      if (
-        socketRef.current &&
-        socketRef.current.readyState === WebSocket.OPEN
-      ) {
+      clearInterval(throttleTimer);
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.close();
       }
     };
-  }, [setChartColorEverywhere, isLoading]);
+  }, [updateMetrics, isLoading]);
 
-  // Call the onPriceUpdate callback when price changes
+  // Notify parent of price updates
   useEffect(() => {
-    if (currentPrice !== null) {
-      onPriceUpdate(currentPrice);
-    }
+    if (currentPrice !== null) onPriceUpdate(currentPrice);
   }, [currentPrice, onPriceUpdate]);
 
   return {
@@ -237,6 +150,6 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
     error,
     isLoading,
     loadingProgress,
-    ws: socketRef.current
+    ws: socketRef.current,
   };
 };

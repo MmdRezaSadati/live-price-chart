@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from 'react';
-import { PricePoint } from '../types/chart';
-import { D3ScaleFunction } from '../types/chart';
+import { useMemo } from "react";
+import { PricePoint } from "../types/chart";
+import { D3ScaleFunction } from "../types/chart";
+import * as d3 from "d3";
 
 export interface PathCalculationProps {
   priceData: PricePoint[];
@@ -38,22 +39,34 @@ export const useChartPathCalculation = ({
   const linePath = useMemo(() => {
     if (!priceData || !timeScale || !priceScale) return "";
 
-    let d = "";
-    priceData.forEach((point, i) => {
-      const x = timeScale(point.timestamp);
-      const y = priceScale(point.price);
-      d += i === 0 ? `M ${x},${y}` : ` L ${x},${y}`;
-    });
+    // تبدیل داده‌ها به فرمت مناسب برای d3.line
+    const formattedData: [number, number][] = priceData.map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
 
-    return d;
+    // ساخت مسیر با d3.line و curveCardinal
+    const lineGenerator = d3
+      .line()
+      .x((d) => d[0])
+      .y((d) => d[1])
+      .curve(d3.curveCardinal);
+
+    return lineGenerator(formattedData) || "";
   }, [priceData, timeScale, priceScale]);
 
   // Calculate delayed path string
   const delayedPath = useMemo(() => {
-    if (!delayedPathData || !timeScale || !priceScale || delayedPathData.length < 2) return "";
+    if (
+      !delayedPathData ||
+      !timeScale ||
+      !priceScale ||
+      delayedPathData.length < 2
+    )
+      return "";
 
     let d = "";
-    const visiblePoints = Math.max(2, Math.ceil(delayedPathData.length * delayedPathProgress));
+    const visiblePoints = Math.max(
+      2,
+      Math.ceil(delayedPathData.length * delayedPathProgress)
+    );
 
     delayedPathData.slice(0, visiblePoints).forEach((point, i) => {
       const x = timeScale(point.timestamp);
@@ -66,7 +79,13 @@ export const useChartPathCalculation = ({
 
   // Calculate the animated new segment
   const animatedSegmentPath = useMemo(() => {
-    if (!isAnimatingNewSegment || !lastTwoPoints?.prev || !lastTwoPoints?.current || !timeScale || !priceScale) {
+    if (
+      !isAnimatingNewSegment ||
+      !lastTwoPoints?.prev ||
+      !lastTwoPoints?.current ||
+      !timeScale ||
+      !priceScale
+    ) {
       return "";
     }
 
@@ -80,11 +99,18 @@ export const useChartPathCalculation = ({
     const currentY = startY + (endY - startY) * newSegmentProgress;
 
     return `M ${startX},${startY} L ${currentX},${currentY}`;
-  }, [isAnimatingNewSegment, lastTwoPoints, timeScale, priceScale, newSegmentProgress]);
+  }, [
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    timeScale,
+    priceScale,
+    newSegmentProgress,
+  ]);
 
   // Calculate area path for the filled gradient area
   const areaPath = useMemo(() => {
-    if (!priceData || !timeScale || !priceScale || priceData.length < 2) return "";
+    if (!priceData || !timeScale || !priceScale || priceData.length < 2)
+      return "";
 
     const chartBottom = chartHeight - padding.y * 2 - timeAxisHeight;
     let d = "";
@@ -92,17 +118,23 @@ export const useChartPathCalculation = ({
     // Start at the bottom left
     const firstPoint = priceData[0];
     const firstX = timeScale(firstPoint.timestamp);
-    d += `M ${firstX},${chartBottom} L ${firstX},${priceScale(firstPoint.price)}`;
+    d += `M ${firstX},${chartBottom} L ${firstX},${priceScale(
+      firstPoint.price
+    )}`;
 
     // Follow the line path
-    priceData.slice(1).forEach(point => {
+    priceData.slice(1).forEach((point) => {
       const x = timeScale(point.timestamp);
       const y = priceScale(point.price);
       d += ` L ${x},${y}`;
     });
 
     // Handle animated segment or close the path
-    if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+    if (
+      isAnimatingNewSegment &&
+      lastTwoPoints?.prev &&
+      lastTwoPoints?.current
+    ) {
       const startX = timeScale(lastTwoPoints.prev.timestamp);
       const endX = timeScale(lastTwoPoints.current.timestamp);
       const currentX = startX + (endX - startX) * newSegmentProgress;
@@ -113,7 +145,17 @@ export const useChartPathCalculation = ({
     }
 
     return d + " Z";
-  }, [priceData, timeScale, priceScale, chartHeight, padding.y, timeAxisHeight, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
+  }, [
+    priceData,
+    timeScale,
+    priceScale,
+    chartHeight,
+    padding.y,
+    timeAxisHeight,
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    newSegmentProgress,
+  ]);
 
   return {
     linePath,
