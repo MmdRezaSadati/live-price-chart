@@ -208,50 +208,58 @@ export const PricePath = ({
 
   // Calculate animation duration based on price change and zoom
   const calculateAnimationDuration = useMemo(() => {
-    if (!priceData || priceData.length < 2) return 2500; // Increased base duration
+    if (!priceData || priceData.length < 2) return 800; // Base duration reduced for faster animations
 
     const lastPoint = priceData[priceData.length - 1];
     const prevPoint = priceData[priceData.length - 2];
-    
+
     // Calculate price change percentage
     const priceChangePercent = Math.abs(
       ((lastPoint.price - prevPoint.price) / prevPoint.price) * 100
     );
 
-    // Base duration is 2500ms
-    let duration = 2500;
+    // Base duration is 800ms for faster animations
+    let duration = 800;
 
     // Adjust duration based on price change percentage
-    // For small changes (< 0.1%), use longer duration
+    // For small changes (< 0.1%), slightly longer duration
     if (priceChangePercent < 0.1) {
-      duration = 3500;
+      duration = 1000;
     }
-    // For medium changes (0.1% - 1%), use medium duration
+    // For medium changes (0.1% - 1%), medium duration
     else if (priceChangePercent < 1) {
-      duration = 3000;
+      duration = 900;
     }
-    // For large changes (> 1%), use shorter duration
+    // For large changes (> 1%), keep it fast
     else {
-      duration = 2500;
+      duration = 800;
     }
 
     // Adjust duration based on zoom level
     // Get the visible time range from timeScale
     const timeRange = timeScale.domain();
     const totalRange = timeRange[1] - timeRange[0];
-    
+
     // Adjust duration based on visible time range
-    // Shorter range (more zoomed in) = faster animation
+    // Shorter range (more zoomed in) = even faster animation
     if (totalRange < 3600000) {
       // Less than 1 hour
-      duration *= 0.85;
+      duration *= 0.7;
     } else if (totalRange < 86400000) {
       // Less than 1 day
-      duration *= 0.9;
+      duration *= 0.8;
     }
 
     return duration;
   }, [priceData, timeScale]);
+
+  // Enhanced easing function with optimized bezier curve for ultra-smooth animations
+  const easeInOutCustom = (t: number): number => {
+    // Optimized bezier curve parameters for smoother motion
+    return t < 0.5
+      ? 2 * t * t
+      : -1 + (4 - 2 * t) * t;
+  };
 
   // State for continuous animation
   const [animationTimestamp, setAnimationTimestamp] = useState(Date.now());
@@ -261,17 +269,72 @@ export const PricePath = ({
     if (!pathRef.current || !timeScale || !priceScale) return;
 
     let animationFrameId: number;
-    const animationInterval = 50; // 50ms interval for smooth animation
     let lastUpdateTime = Date.now();
+
+
 
     const animate = () => {
       const currentTime = Date.now();
       const deltaTime = currentTime - lastUpdateTime;
-
-      if (deltaTime >= animationInterval) {
+      // Ensure we maintain a consistent 16.67ms interval (60fps)
+      const intervalTime = 8.33 // Increased refresh rate for smoother animation (120fps)
+      
+      if (deltaTime >= intervalTime) {
         // Update timestamp for continuous movement
         setAnimationTimestamp(currentTime);
         lastUpdateTime = currentTime;
+
+        // Calculate circle position here for smoother updates
+        if (priceData.length > 0) {
+          const lastPoint = priceData[priceData.length - 1];
+          const lastTimestamp = lastPoint.timestamp;
+
+          // Calculate time progression with fixed 16.67ms interval for smoother animation
+          const timeElapsed = currentTime - lastTimestamp;
+          const timeIncrement = timeElapsed % intervalTime;
+          const progressRatio = timeIncrement / intervalTime;
+
+          // Calculate the position with continuous movement using easing
+          const baseX = timeScale(lastTimestamp);
+          const maxX = width - padding.x; // Right boundary
+          const easeProgress = easeInOutCustom(progressRatio); // Apply enhanced easing function for smoother movement
+          const currentX = Math.min(
+            baseX + (maxX - baseX) * easeProgress,
+            maxX
+          );
+
+          let point = {
+            x: currentX,
+            y: priceScale(lastPoint.price),
+          };
+
+          // If animating a new segment, override with animation progress
+          if (
+            isAnimatingNewSegment &&
+            lastTwoPoints?.prev &&
+            lastTwoPoints?.current
+          ) {
+            const prevPoint = lastTwoPoints.prev;
+            const currentPoint = lastTwoPoints.current;
+            const progress = Math.min(Math.max(newSegmentProgress, 0), 1);
+            const easeSegmentProgress = easeInOutCustom(progress); // Apply enhanced easing to segment animation
+
+            point = {
+              x:
+                timeScale(prevPoint.timestamp) +
+                (timeScale(currentPoint.timestamp) -
+                  timeScale(prevPoint.timestamp)) *
+                  easeSegmentProgress,
+              y:
+                priceScale(prevPoint.price) +
+                (priceScale(currentPoint.price) - priceScale(prevPoint.price)) *
+                  easeSegmentProgress,
+            };
+          }
+
+          // Update circle position
+          setCirclePosition(point);
+        }
       }
 
       animationFrameId = requestAnimationFrame(animate);
@@ -281,65 +344,37 @@ export const PricePath = ({
       // Get total path length
       const totalLength = pathRef.current.getTotalLength();
 
-      // Set up path animation with dynamic duration
+      // Set up path animation with optimized timing and easing
       pathRef.current.style.transition = `
-        stroke-dashoffset 3s cubic-bezier(0.16, 1, 0.3, 1),
-        stroke 2s cubic-bezier(0.16, 1, 0.3, 1),
-        stroke-width 2s cubic-bezier(0.16, 1, 0.3, 1),
-        filter 2s cubic-bezier(0.16, 1, 0.3, 1)
+        stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), 
+        stroke 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        stroke-width 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+        filter 0.5s cubic-bezier(0.4, 0, 0.2, 1)
       `;
       pathRef.current.style.strokeDasharray = `${totalLength}`;
-      pathRef.current.style.willChange = "stroke-dashoffset, stroke, stroke-width, filter";
+      pathRef.current.style.willChange =
+        "stroke-dashoffset, stroke, stroke-width, filter";
 
-      // Calculate circle position
-      let point;
-
+      // Initial circle position setup
       if (priceData.length > 0) {
         const lastPoint = priceData[priceData.length - 1];
-        const lastTimestamp = lastPoint.timestamp;
-        
-        // Calculate time progression
-        const timeElapsed = animationTimestamp - lastTimestamp;
-        const timeIncrement = timeElapsed % 5000; // Reset every 5 seconds
-        const progressRatio = timeIncrement / 5000;
-
-        // Calculate the position with continuous movement
-        const baseX = timeScale(lastTimestamp);
-        const maxX = width - padding.x; // Right boundary
-        const currentX = Math.min(baseX + (maxX - baseX) * progressRatio, maxX);
-
-        point = {
-          x: currentX,
-          y: priceScale(lastPoint.price)
-        };
-
-        // If animating a new segment, override with animation progress
-        if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
-          const prevPoint = lastTwoPoints.prev;
-          const currentPoint = lastTwoPoints.current;
-          const progress = Math.min(Math.max(newSegmentProgress, 0), 1);
-
-          point = {
-            x: timeScale(prevPoint.timestamp) + (timeScale(currentPoint.timestamp) - timeScale(prevPoint.timestamp)) * progress,
-            y: priceScale(prevPoint.price) + (priceScale(currentPoint.price) - priceScale(prevPoint.price)) * progress
-          };
-        }
+        setCirclePosition({
+          x: timeScale(lastPoint.timestamp),
+          y: priceScale(lastPoint.price),
+        });
       } else {
         // Fallback to path end if no data
-        point = pathRef.current.getPointAtLength(totalLength);
+        const point = pathRef.current.getPointAtLength(totalLength);
+        setCirclePosition(point);
       }
-
-      // Update circle position
-      setCirclePosition(point);
 
       // Add smooth transition for subsequent updates
       if (circleRef.current) {
-        circleRef.current.style.transition = 'transform 0.1s ease-out';
+        circleRef.current.style.transition = "transform 0.1s ease-out";
       }
 
       // Start the animation loop
       animate();
-
     } catch (error) {
       if (process.env.NODE_ENV !== "test") {
         console.error("Error calculating path points:", error);
@@ -362,7 +397,7 @@ export const PricePath = ({
     priceData,
     animationTimestamp,
     width,
-    padding.x
+    padding.x,
   ]);
 
   // Grid rendering function
@@ -460,7 +495,7 @@ export const PricePath = ({
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{
-            transition: "fill 0.7s ease-out",
+            transition: "fill 1s cubic-bezier(0.4, 0.1, 0.3, 1)",
           }}
         />
 
@@ -480,7 +515,7 @@ export const PricePath = ({
               stroke-width 2s cubic-bezier(0.16, 1, 0.3, 1),
               filter 2s cubic-bezier(0.16, 1, 0.3, 1)
             `,
-            willChange: "stroke-dashoffset, stroke, stroke-width, filter"
+            willChange: "stroke-dashoffset, stroke, stroke-width, filter",
           }}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -537,7 +572,7 @@ export const PricePath = ({
             filter: `drop-shadow(0 0 8px ${glowColor})`,
             transition: isAnimatingNewSegment
               ? "none" // Disable transition during segment animation for precise movement
-              : "fill 0.1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.1s cubic-bezier(0.4, 0, 0.2, 1), cx 0.1s cubic-bezier(0.4, 0, 0.2, 1), cy 0.1s cubic-bezier(0.4, 0, 0.2, 1)",
+              : "fill 0.3s cubic-bezier(0.4, 0.1, 0.3, 1), stroke 0.3s cubic-bezier(0.4, 0.1, 0.3, 1), cx 0.3s cubic-bezier(0.4, 0.1, 0.3, 1), cy 0.3s cubic-bezier(0.4, 0.1, 0.3, 1)",
             willChange: "transform",
             transform: "translateZ(0)", // Force GPU acceleration
           }}
