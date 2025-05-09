@@ -253,9 +253,29 @@ export const PricePath = ({
     return duration;
   }, [priceData, timeScale]);
 
+  // State for continuous animation
+  const [animationTimestamp, setAnimationTimestamp] = useState(Date.now());
+
   // Calculate path length and position circle directly on the path
   useEffect(() => {
-    if (!pathRef.current || !linePath || !timeScale || !priceScale) return;
+    if (!pathRef.current || !timeScale || !priceScale) return;
+
+    let animationFrameId: number;
+    const animationInterval = 50; // 50ms interval for smooth animation
+    let lastUpdateTime = Date.now();
+
+    const animate = () => {
+      const currentTime = Date.now();
+      const deltaTime = currentTime - lastUpdateTime;
+
+      if (deltaTime >= animationInterval) {
+        // Update timestamp for continuous movement
+        setAnimationTimestamp(currentTime);
+        lastUpdateTime = currentTime;
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
 
     try {
       // Get total path length
@@ -271,18 +291,29 @@ export const PricePath = ({
       pathRef.current.style.strokeDasharray = `${totalLength}`;
       pathRef.current.style.willChange = "stroke-dashoffset, stroke, stroke-width, filter";
 
-      // Calculate circle position immediately without waiting for animation
+      // Calculate circle position
       let point;
 
       if (priceData.length > 0) {
-        // Always use the last data point for initial positioning
         const lastPoint = priceData[priceData.length - 1];
+        const lastTimestamp = lastPoint.timestamp;
+        
+        // Calculate time progression
+        const timeElapsed = animationTimestamp - lastTimestamp;
+        const timeIncrement = timeElapsed % 5000; // Reset every 5 seconds
+        const progressRatio = timeIncrement / 5000;
+
+        // Calculate the position with continuous movement
+        const baseX = timeScale(lastTimestamp);
+        const maxX = width - padding.x; // Right boundary
+        const currentX = Math.min(baseX + (maxX - baseX) * progressRatio, maxX);
+
         point = {
-          x: timeScale(lastPoint.timestamp),
+          x: currentX,
           y: priceScale(lastPoint.price)
         };
 
-        // If animating a new segment, update position based on progress
+        // If animating a new segment, override with animation progress
         if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
           const prevPoint = lastTwoPoints.prev;
           const currentPoint = lastTwoPoints.current;
@@ -298,18 +329,29 @@ export const PricePath = ({
         point = pathRef.current.getPointAtLength(totalLength);
       }
 
-      // Update circle position immediately
+      // Update circle position
       setCirclePosition(point);
 
       // Add smooth transition for subsequent updates
       if (circleRef.current) {
         circleRef.current.style.transition = 'transform 0.1s ease-out';
       }
+
+      // Start the animation loop
+      animate();
+
     } catch (error) {
       if (process.env.NODE_ENV !== "test") {
         console.error("Error calculating path points:", error);
       }
     }
+
+    // Cleanup animation frame
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [
     linePath,
     timeScale,
@@ -317,7 +359,10 @@ export const PricePath = ({
     isAnimatingNewSegment,
     lastTwoPoints,
     newSegmentProgress,
-    priceData
+    priceData,
+    animationTimestamp,
+    width,
+    padding.x
   ]);
 
   // Grid rendering function
