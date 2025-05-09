@@ -40,9 +40,21 @@ export const useChartPathCalculation = ({
   curve = curveNatural,
   interpolationPoints = 200,
 }: PathCalculationProps) => {
+  // Calculate circle position directly from the last data point using useMemo
+  const computeCirclePositionOnPath = useMemo(() => {
+    if (!priceData.length || !timeScale || !priceScale) {
+      return { x: 0, y: 0 };
+    }
+    const lastPoint = priceData[priceData.length - 1];
+    return {
+      x: timeScale(lastPoint.timestamp),
+      y: priceScale(lastPoint.price),
+    };
+  }, [priceData, timeScale, priceScale]);
   // Calculate base path (excluding the last point)
   const basePath = useMemo(() => {
-    if (!priceData || !timeScale || !priceScale || priceData.length < 2) return "";
+    if (!priceData || !timeScale || !priceScale || priceData.length < 2)
+      return "";
 
     // Use all points except the last one for the base path
     const baseData = priceData.slice(0, -1);
@@ -148,7 +160,10 @@ export const useChartPathCalculation = ({
       return "";
 
     const formattedData: [number, number][] = delayedPathData
-      .slice(0, Math.max(2, Math.ceil(delayedPathData.length * delayedPathProgress)))
+      .slice(
+        0,
+        Math.max(2, Math.ceil(delayedPathData.length * delayedPathProgress))
+      )
       .map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
 
     const lineGenerator = d3
@@ -176,6 +191,26 @@ export const useChartPathCalculation = ({
     return basePath + spring.d;
   }, [basePath, spring.d]);
 
+  // Create spring animations for paths
+  const springCircle = useSpring({
+    from: {
+      areaPath,
+      linePath: finalLinePath,
+      x: computeCirclePositionOnPath?.x || 0,
+      y: computeCirclePositionOnPath?.y || 0,
+    },
+    to: {
+      areaPath,
+      linePath: finalLinePath,
+      x: computeCirclePositionOnPath?.x || 0,
+      y: computeCirclePositionOnPath?.y || 0,
+    },
+    config: {
+      tension: 750,
+      friction: 150,
+    },
+  });
+
   // Create a single object for both path and circle position
   const animatedValues = useMemo(() => {
     return {
@@ -184,6 +219,7 @@ export const useChartPathCalculation = ({
       animatedSegmentPath: spring.d,
       areaPath,
       circlePosition: { x: spring.x, y: spring.y },
+      spring: springCircle,
     };
   }, [finalLinePath, delayedPath, spring.d, areaPath, spring.x, spring.y]);
 

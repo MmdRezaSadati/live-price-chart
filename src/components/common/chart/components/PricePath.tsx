@@ -12,6 +12,7 @@ import { PricePathArea } from "./PricePathArea";
 import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
 import { PricePathAnimation } from "./path/PricePathAnimation";
 import { PricePathIndicator } from "./path/PricePathIndicator";
+import { ChartGrid } from "./ChartGrid";
 
 export const PricePath = ({
   priceData,
@@ -43,113 +44,22 @@ export const PricePath = ({
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
-  // Calculate circle position directly from the last data point using useMemo
-  const circlePosition = useMemo(() => {
-    if (!priceData.length || !timeScale || !priceScale) {
-      return { x: 0, y: 0 };
-    }
-    const lastPoint = priceData[priceData.length - 1];
-    return {
-      x: timeScale(lastPoint.timestamp),
-      y: priceScale(lastPoint.price),
-    };
-  }, [priceData, timeScale, priceScale]);
-
   // Calculate all path data using the hook with enhanced smoothing
-  const { linePath, delayedPath, animatedSegmentPath, areaPath } =
-    useChartPathCalculation({
-      priceData,
-      timeScale,
-      priceScale,
-      chartHeight,
-      padding,
-      timeAxisHeight,
-      isAnimatingNewSegment,
-      lastTwoPoints,
-      newSegmentProgress,
-      delayedPathData,
-      delayedPathProgress,
-      curve: d3.curveCatmullRom.alpha(0.5),
-      interpolationPoints: 100,
-    });
-
-  // Create spring animations for paths
-  const spring = useSpring({
-    from: {
-      areaPath,
-      linePath,
-      x: circlePosition?.x || 0,
-      y: circlePosition?.y || 0,
-    },
-    to: {
-      areaPath,
-      linePath,
-      x: circlePosition?.x || 0,
-      y: circlePosition?.y || 0,
-    },
-    config: {
-      tension: 750,
-      friction: 150,
-    },
+  const { delayedPath, spring } = useChartPathCalculation({
+    priceData,
+    timeScale,
+    priceScale,
+    chartHeight,
+    padding,
+    timeAxisHeight,
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    newSegmentProgress,
+    delayedPathData,
+    delayedPathProgress,
+    curve: d3.curveCatmullRom.alpha(0.5),
+    interpolationPoints: 100,
   });
-
-  // Grid rendering function
-  const renderGrid = () => {
-    const gridLines = [];
-
-    // Horizontal grid lines (price levels)
-    for (let i = 0; i <= 5; i++) {
-      const price =
-        priceData.length > 0
-          ? priceData[priceData.length - 1].price -
-            priceData[priceData.length - 1].price * 0.002 +
-            (i * (priceData[priceData.length - 1].price * 0.004)) / 4
-          : 0;
-
-      const y = priceScale(price);
-      gridLines.push(
-        <g key={`grid-${i}`} className="transition-all duration-700">
-          <line
-            data-testid="grid-line"
-            x1={padding.x}
-            y1={y}
-            x2={width}
-            y2={y}
-            stroke={COLORS.grid}
-            strokeDasharray="3,5"
-            strokeWidth={1}
-          />
-          <text
-            x={padding.x / 2}
-            y={y - 6}
-            fill={COLORS.gridText}
-            fontSize={fontSize.labels}
-            className="font-mono"
-          >
-            ${Math.round(price).toLocaleString()}
-          </text>
-        </g>
-      );
-    }
-
-    // Vertical grid lines (time periods)
-    for (let i = 0; i <= 4; i++) {
-      const x = padding.x + (i / 4) * (width - padding.x * 2);
-      gridLines.push(
-        <line
-          key={`v-${i}`}
-          x1={x}
-          y1={padding.y}
-          x2={x}
-          y2={chartHeight - padding.y * 3}
-          stroke={COLORS.grid}
-          strokeWidth="1"
-        />
-      );
-    }
-
-    return gridLines;
-  };
 
   return (
     <svg
@@ -159,7 +69,14 @@ export const PricePath = ({
       className="chart-svg"
     >
       {/* Grid lines with values */}
-      {renderGrid()}
+      <ChartGrid
+        priceData={priceData}
+        priceScale={priceScale}
+        width={width}
+        padding={padding}
+        fontSize={fontSize}
+        chartHeight={chartHeight}
+      />
 
       {/* Time axis line */}
       <line
