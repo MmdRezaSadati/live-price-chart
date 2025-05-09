@@ -5,7 +5,7 @@ import { PricePoint } from "@/types/chart";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Number of initial price points to collect before showing the chart
-const INITIAL_PRICE_BUFFER_SIZE = 10;
+const INITIAL_PRICE_BUFFER_SIZE = 70;
 
 /**
  * Custom hook for managing WebSocket connection with Binance

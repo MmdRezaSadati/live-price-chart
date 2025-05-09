@@ -56,7 +56,7 @@ export const PricePathLine: React.FC<PricePathLineProps> = ({
             return interpolator(t);
           };
         });
-      // --- پایان انیمیشن ---
+      // --- End of animation ---
     } catch (error) {
       if (process.env.NODE_ENV !== "test") {
         console.error("Error calculating path points:", error);

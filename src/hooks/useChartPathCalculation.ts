@@ -39,10 +39,10 @@ export const useChartPathCalculation = ({
   const linePath = useMemo(() => {
     if (!priceData || !timeScale || !priceScale) return "";
 
-    // تبدیل داده‌ها به فرمت مناسب برای d3.line
+    // Convert data to appropriate format for d3.line
     const formattedData: [number, number][] = priceData.map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
 
-    // ساخت مسیر با d3.line و curveCardinal
+    // Create path with d3.line and curveCardinal
     const lineGenerator = d3
       .line()
       .x((d) => d[0])

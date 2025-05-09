@@ -44,7 +44,23 @@ export const PricePath = ({
 
   // State for circle position with initial value from last data point
   const [circlePosition, setCirclePosition] = useState(() => {
-    if (priceData.length > 0 && timeScale && priceScale) {
+    if (
+      isAnimatingNewSegment &&
+      lastTwoPoints?.prev &&
+      lastTwoPoints?.current &&
+      timeScale &&
+      priceScale
+    ) {
+      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
+      const startX = timeScale(prevPoint.timestamp);
+      const startY = priceScale(prevPoint.price);
+      const endX = timeScale(currentPoint.timestamp);
+      const endY = priceScale(currentPoint.price);
+      return {
+        x: startX + (endX - startX) * newSegmentProgress,
+        y: startY + (endY - startY) * newSegmentProgress,
+      };
+    } else if (priceData.length > 0 && timeScale && priceScale) {
       const lastPoint = priceData[priceData.length - 1];
       return {
         x: timeScale(lastPoint.timestamp),
@@ -53,6 +69,33 @@ export const PricePath = ({
     }
     return { x: 0, y: 0 };
   });
+
+  // Synchronizing circle movement with path animation
+  useEffect(() => {
+    if (!timeScale || !priceScale) return;
+
+    if (
+      isAnimatingNewSegment &&
+      lastTwoPoints?.prev &&
+      lastTwoPoints?.current
+    ) {
+      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
+      const startX = timeScale(prevPoint.timestamp);
+      const startY = priceScale(prevPoint.price);
+      const endX = timeScale(currentPoint.timestamp);
+      const endY = priceScale(currentPoint.price);
+      setCirclePosition({
+        x: startX + (endX - startX) * newSegmentProgress,
+        y: startY + (endY - startY) * newSegmentProgress,
+      });
+    } else if (priceData.length > 0) {
+      const lastPoint = priceData[priceData.length - 1];
+      setCirclePosition({
+        x: timeScale(lastPoint.timestamp),
+        y: priceScale(lastPoint.price),
+      });
+    }
+  }, [timeScale, priceScale, priceData, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
 
   // Calculate all path data using the hook
   const { linePath, delayedPath, animatedSegmentPath, areaPath } =
@@ -69,41 +112,6 @@ export const PricePath = ({
       delayedPathData,
       delayedPathProgress,
     });
-
-  // Update circle position directly without animation frame
-  useEffect(() => {
-    if (!timeScale || !priceScale || !priceData.length) return;
-
-    if (
-      isAnimatingNewSegment &&
-      lastTwoPoints?.prev &&
-      lastTwoPoints?.current
-    ) {
-      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
-      const startX = timeScale(prevPoint.timestamp);
-      const startY = priceScale(prevPoint.price);
-      const endX = timeScale(currentPoint.timestamp);
-      const endY = priceScale(currentPoint.price);
-
-      setCirclePosition({
-        x: startX + (endX - startX) * newSegmentProgress,
-        y: startY + (endY - startY) * newSegmentProgress,
-      });
-    } else if (priceData.length > 0) {
-      const lastPoint = priceData[priceData.length - 1];
-      setCirclePosition({
-        x: timeScale(lastPoint.timestamp),
-        y: priceScale(lastPoint.price),
-      });
-    }
-  }, [
-    timeScale,
-    priceScale,
-    priceData,
-    isAnimatingNewSegment,
-    lastTwoPoints,
-    newSegmentProgress,
-  ]);
 
   // Grid rendering function
   const renderGrid = () => {
