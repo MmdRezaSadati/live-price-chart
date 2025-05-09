@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { PricePoint } from "../types/chart";
 import { D3ScaleFunction } from "../types/chart";
 import * as d3 from "d3";
+import { useSpring, animated } from "@react-spring/web";
+import { curveNatural } from "@visx/curve";
 
 export interface PathCalculationProps {
   priceData: PricePoint[];
@@ -36,99 +38,31 @@ export const useChartPathCalculation = ({
   newSegmentProgress,
   delayedPathData = [],
   delayedPathProgress,
-  curve = d3.curveBasis,
-  interpolationPoints = 100,
+  curve = curveNatural,
+  interpolationPoints = 200,
 }: PathCalculationProps) => {
-  // Calculate line path string based on price data
-  const linePath = useMemo(() => {
-    if (!priceData || !timeScale || !priceScale) return "";
+  // Calculate base path (excluding the last point)
+  const basePath = useMemo(() => {
+    if (!priceData || !timeScale || !priceScale || priceData.length < 2) return "";
 
-    // Convert data to appropriate format for d3.line
-    const formattedData: [number, number][] = priceData.map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
+    // Use all points except the last one for the base path
+    const baseData = priceData.slice(0, -1);
+    const formattedData: [number, number][] = baseData.map((point) => [
+      timeScale(point.timestamp),
+      priceScale(point.price),
+    ]);
 
-    // Create path with d3.line and specified curve
     const lineGenerator = d3
       .line()
       .x((d) => d[0])
       .y((d) => d[1])
       .curve(curve);
 
-    // Add interpolation points for smoother curves
-    if (interpolationPoints > 0) {
-      const interpolatedData: [number, number][] = [];
-      
-      // Add control points at the start and end for smoother curves
-      if (formattedData.length > 0) {
-        const firstPoint = formattedData[0];
-        const secondPoint = formattedData[1];
-        const controlPoint1 = [
-          firstPoint[0] - (secondPoint[0] - firstPoint[0]) * 0.5,
-          firstPoint[1] - (secondPoint[1] - firstPoint[1]) * 0.5,
-        ];
-        interpolatedData.push(controlPoint1 as [number, number]);
-      }
-
-      // Add main points with interpolation
-      for (let i = 0; i < formattedData.length - 1; i++) {
-        const current = formattedData[i];
-        const next = formattedData[i + 1];
-        interpolatedData.push(current);
-        
-        // Add interpolation points between current and next point
-        for (let j = 1; j <= interpolationPoints; j++) {
-          const t = j / (interpolationPoints + 1);
-          // Use cubic interpolation for smoother curves
-          const x = current[0] + (next[0] - current[0]) * t;
-          const y = current[1] + (next[1] - current[1]) * t;
-          interpolatedData.push([x, y]);
-        }
-      }
-
-      // Add control point at the end
-      if (formattedData.length > 1) {
-        const lastPoint = formattedData[formattedData.length - 1];
-        const secondLastPoint = formattedData[formattedData.length - 2];
-        const controlPoint2 = [
-          lastPoint[0] + (lastPoint[0] - secondLastPoint[0]) * 0.5,
-          lastPoint[1] + (lastPoint[1] - secondLastPoint[1]) * 0.5,
-        ];
-        interpolatedData.push(lastPoint);
-        interpolatedData.push(controlPoint2 as [number, number]);
-      }
-
-      return lineGenerator(interpolatedData) || "";
-    }
-
     return lineGenerator(formattedData) || "";
-  }, [priceData, timeScale, priceScale, curve, interpolationPoints]);
+  }, [priceData, timeScale, priceScale, curve]);
 
-  // Calculate delayed path string
-  const delayedPath = useMemo(() => {
-    if (
-      !delayedPathData ||
-      !timeScale ||
-      !priceScale ||
-      delayedPathData.length < 2
-    )
-      return "";
-
-    let d = "";
-    const visiblePoints = Math.max(
-      2,
-      Math.ceil(delayedPathData.length * delayedPathProgress)
-    );
-
-    delayedPathData.slice(0, visiblePoints).forEach((point, i) => {
-      const x = timeScale(point.timestamp);
-      const y = priceScale(point.price);
-      d += i === 0 ? `M ${x},${y}` : ` L ${x},${y}`;
-    });
-
-    return d;
-  }, [delayedPathData, timeScale, priceScale, delayedPathProgress]);
-
-  // Calculate the animated new segment
-  const animatedSegmentPath = useMemo(() => {
+  // Calculate the animated new segment and circle position
+  const { animatedPath, circlePosition } = useMemo(() => {
     if (
       !isAnimatingNewSegment ||
       !lastTwoPoints?.prev ||
@@ -136,7 +70,7 @@ export const useChartPathCalculation = ({
       !timeScale ||
       !priceScale
     ) {
-      return "";
+      return { animatedPath: "", circlePosition: null };
     }
 
     const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
@@ -145,10 +79,23 @@ export const useChartPathCalculation = ({
     const endX = timeScale(currentPoint.timestamp);
     const endY = priceScale(currentPoint.price);
 
+    // Calculate current position based on progress
     const currentX = startX + (endX - startX) * newSegmentProgress;
     const currentY = startY + (endY - startY) * newSegmentProgress;
 
-    return `M ${startX},${startY} L ${currentX},${currentY}`;
+    // Create a smooth curve for the new segment
+    const controlPoint1X = startX + (endX - startX) * 0.5;
+    const controlPoint1Y = startY;
+    const controlPoint2X = startX + (endX - startX) * 0.5;
+    const controlPoint2Y = endY;
+
+    // Use cubic bezier for smooth animation
+    const path = `M ${startX},${startY} C ${controlPoint1X},${controlPoint1Y} ${controlPoint2X},${controlPoint2Y} ${currentX},${currentY}`;
+
+    return {
+      animatedPath: path,
+      circlePosition: { x: currentX, y: currentY },
+    };
   }, [
     isAnimatingNewSegment,
     lastTwoPoints,
@@ -163,38 +110,25 @@ export const useChartPathCalculation = ({
       return "";
 
     const chartBottom = chartHeight - padding.y * 2 - timeAxisHeight;
-    let d = "";
+    const formattedData: [number, number][] = priceData.map((point) => [
+      timeScale(point.timestamp),
+      priceScale(point.price),
+    ]);
 
-    // Start at the bottom left
-    const firstPoint = priceData[0];
-    const firstX = timeScale(firstPoint.timestamp);
-    d += `M ${firstX},${chartBottom} L ${firstX},${priceScale(
-      firstPoint.price
-    )}`;
+    // Add bottom points for area
+    const areaData: [number, number][] = [
+      ...formattedData,
+      [formattedData[formattedData.length - 1][0], chartBottom],
+      [formattedData[0][0], chartBottom],
+    ];
 
-    // Follow the line path
-    priceData.slice(1).forEach((point) => {
-      const x = timeScale(point.timestamp);
-      const y = priceScale(point.price);
-      d += ` L ${x},${y}`;
-    });
+    const areaGenerator = d3
+      .area()
+      .x((d) => d[0])
+      .y0(chartBottom)
+      .y1((d) => d[1]);
 
-    // Handle animated segment or close the path
-    if (
-      isAnimatingNewSegment &&
-      lastTwoPoints?.prev &&
-      lastTwoPoints?.current
-    ) {
-      const startX = timeScale(lastTwoPoints.prev.timestamp);
-      const endX = timeScale(lastTwoPoints.current.timestamp);
-      const currentX = startX + (endX - startX) * newSegmentProgress;
-      d += ` L ${currentX},${chartBottom}`;
-    } else {
-      const lastPoint = priceData[priceData.length - 1];
-      d += ` L ${timeScale(lastPoint.timestamp)},${chartBottom}`;
-    }
-
-    return d + " Z";
+    return areaGenerator(areaData) || "";
   }, [
     priceData,
     timeScale,
@@ -202,15 +136,57 @@ export const useChartPathCalculation = ({
     chartHeight,
     padding.y,
     timeAxisHeight,
-    isAnimatingNewSegment,
-    lastTwoPoints,
-    newSegmentProgress,
   ]);
 
-  return {
-    linePath,
-    delayedPath,
-    animatedSegmentPath,
-    areaPath,
-  };
+  // Calculate delayed path string
+  const delayedPath = useMemo(() => {
+    if (
+      !delayedPathData ||
+      !timeScale ||
+      !priceScale ||
+      delayedPathData.length < 2
+    )
+      return "";
+
+    const formattedData: [number, number][] = delayedPathData
+      .slice(0, Math.max(2, Math.ceil(delayedPathData.length * delayedPathProgress)))
+      .map((point) => [timeScale(point.timestamp), priceScale(point.price)]);
+
+    const lineGenerator = d3
+      .line()
+      .x((d) => d[0])
+      .y((d) => d[1])
+      .curve(curve);
+
+    return lineGenerator(formattedData) || "";
+  }, [delayedPathData, timeScale, priceScale, delayedPathProgress, curve]);
+
+  // Create a single spring animation for both path and circle
+  const spring = useSpring({
+    d: animatedPath,
+    x: circlePosition?.x || 0,
+    y: circlePosition?.y || 0,
+    config: {
+      tension: 750,
+      friction: 150,
+    },
+  });
+
+  // Calculate the final line path by combining base path and animated segment
+  const finalLinePath = useMemo(() => {
+    return basePath + spring.d;
+  }, [basePath, spring.d]);
+
+  // Create a single object for both path and circle position
+  const animatedValues = useMemo(() => {
+    return {
+      linePath: finalLinePath,
+      delayedPath,
+      animatedSegmentPath: spring.d,
+      areaPath,
+      circlePosition: { x: spring.x, y: spring.y },
+    };
+  }, [finalLinePath, delayedPath, spring.d, areaPath, spring.x, spring.y]);
+
+  return animatedValues;
 };

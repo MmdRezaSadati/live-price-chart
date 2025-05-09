@@ -6,6 +6,7 @@ import { COLORS } from "@/constants/chart";
 import { TimeAxis } from "./TimeAxis";
 import { curveBasis, curveMonotoneX } from "d3-shape";
 import * as d3 from "d3";
+import { useSpring, animated } from "@react-spring/web";
 
 import { PricePathLine } from "./PricePathLine";
 import { PricePathArea } from "./PricePathArea";
@@ -56,6 +57,15 @@ export const PricePath = ({
     };
   }, [priceData, timeScale, priceScale]);
 
+  // Create spring animation for circle position
+  const circleSpring = useSpring({
+    to: circlePosition,
+    config: {
+      tension: 300,
+      friction: 20,
+    },
+  });
+
   // Calculate all path data using the hook with enhanced smoothing
   const { linePath, delayedPath, animatedSegmentPath, areaPath } =
     useChartPathCalculation({
@@ -71,7 +81,7 @@ export const PricePath = ({
       delayedPathData,
       delayedPathProgress,
       curve: d3.curveCatmullRom.alpha(0.5),
-      interpolationPoints: 50,
+      interpolationPoints: 100,
     });
 
   // Grid rendering function
@@ -175,8 +185,8 @@ export const PricePath = ({
         />
 
         <PricePathIndicator
-          x={circlePosition.x}
-          y={circlePosition.y}
+          x={circleSpring.x}
+          y={circleSpring.y}
           radius={circleRadius}
           color={color}
           glowColor={glowColor}
