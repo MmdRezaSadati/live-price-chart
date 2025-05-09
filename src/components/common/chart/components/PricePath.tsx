@@ -255,10 +255,10 @@ export const PricePath = ({
 
   // Enhanced easing function with optimized bezier curve for ultra-smooth animations
   const easeInOutCustom = (t: number): number => {
-    // Optimized bezier curve parameters for smoother motion
+    // Optimized bezier curve parameters for smoother motion with enhanced cubic interpolation
     return t < 0.5
-      ? 2 * t * t
-      : -1 + (4 - 2 * t) * t;
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   };
 
   // State for continuous animation
@@ -277,7 +277,7 @@ export const PricePath = ({
       const currentTime = Date.now();
       const deltaTime = currentTime - lastUpdateTime;
       // Ensure we maintain a consistent 16.67ms interval (60fps)
-      const intervalTime = 8.33 // Increased refresh rate for smoother animation (120fps)
+      const intervalTime = 4.17 // Increased refresh rate for smoother animation (240fps)
       
       if (deltaTime >= intervalTime) {
         // Update timestamp for continuous movement
