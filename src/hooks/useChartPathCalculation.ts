@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { PricePoint } from "../types/chart";
-import { D3ScaleFunction } from "../types/chart";
-import * as d3 from "d3";
-import { useSpring, animated } from "@react-spring/web";
+import { useSpring } from "@react-spring/web";
 import { curveNatural } from "@visx/curve";
+import * as d3 from "d3";
+import { useMemo } from "react";
+import { D3ScaleFunction, PricePoint } from "../types/chart";
 
 export interface PathCalculationProps {
   priceData: PricePoint[];

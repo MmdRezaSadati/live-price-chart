@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useRef } from 'react';
+import { SpringValue, animated } from "@react-spring/web";
 
 interface PricePathAnimationProps {
-  animatedSegmentPath: string;
+  animatedSegmentPath: SpringValue<string>;
   delayedPath: string;
   color: string;
   glowColor: string;
@@ -12,7 +13,7 @@ interface PricePathAnimationProps {
   isAnimatingDelayedPath: boolean;
 }
 
-export const PricePathAnimation: React.FC<PricePathAnimationProps> = ({
+export const PricePathAnimation = ({
   animatedSegmentPath,
   delayedPath,
   color,
@@ -20,7 +21,7 @@ export const PricePathAnimation: React.FC<PricePathAnimationProps> = ({
   strokeWidth,
   isAnimatingNewSegment,
   isAnimatingDelayedPath,
-}) => {
+}: PricePathAnimationProps) => {
   const delayedPathRef = useRef<SVGPathElement | null>(null);
 
   return (
@@ -32,7 +33,7 @@ export const PricePathAnimation: React.FC<PricePathAnimationProps> = ({
           ref={delayedPathRef}
           d={delayedPath}
           fill="none"
-          stroke={color}
+          stroke={glowColor}
           strokeWidth={strokeWidth}
           style={{
             filter: `drop-shadow(0 12px 24px ${glowColor})`,
@@ -47,18 +48,15 @@ export const PricePathAnimation: React.FC<PricePathAnimationProps> = ({
 
       {/* Animated new segment - only shown during animation */}
       {isAnimatingNewSegment && (
-        <path
+        <animated.path
           data-testid="animated-segment"
           d={animatedSegmentPath}
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
-          style={{
-            filter: `drop-shadow(0 12px 24px ${glowColor})`,
-            transition: 'stroke 1s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
           strokeLinecap="round"
           strokeLinejoin="round"
+          filter="url(#glow)"
         />
       )}
     </>

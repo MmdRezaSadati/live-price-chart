@@ -1,19 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { PricePathProps } from "../../../../types/chart";
 import { COLORS } from "@/constants/chart";
-import { TimeAxis } from "./TimeAxis";
-import { curveBasis, curveMonotoneX } from "d3-shape";
+import { animated, useSpring } from "@react-spring/web";
 import * as d3 from "d3";
-import { useSpring, animated } from "@react-spring/web";
+import { useMemo } from "react";
+import { PricePathProps } from "../../../../types/chart";
+import { TimeAxis } from "./TimeAxis";
 
-import { PricePathLine } from "./PricePathLine";
 import { PricePathArea } from "./PricePathArea";
 
 import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
-import { PricePathIndicator } from "./path/PricePathIndicator";
 import { PricePathAnimation } from "./path/PricePathAnimation";
+import { PricePathIndicator } from "./path/PricePathIndicator";
 
 export const PricePath = ({
   priceData,
@@ -57,15 +55,6 @@ export const PricePath = ({
     };
   }, [priceData, timeScale, priceScale]);
 
-  // Create spring animation for circle position
-  const circleSpring = useSpring({
-    to: circlePosition,
-    config: {
-      tension: 300,
-      friction: 20,
-    },
-  });
-
   // Calculate all path data using the hook with enhanced smoothing
   const { linePath, delayedPath, animatedSegmentPath, areaPath } =
     useChartPathCalculation({
@@ -83,6 +72,26 @@ export const PricePath = ({
       curve: d3.curveCatmullRom.alpha(0.5),
       interpolationPoints: 100,
     });
+
+  // Create spring animations for paths
+  const spring = useSpring({
+    from: {
+      areaPath,
+      linePath,
+      x: circlePosition?.x || 0,
+      y: circlePosition?.y || 0,
+    },
+    to: {
+      areaPath,
+      linePath,
+      x: circlePosition?.x || 0,
+      y: circlePosition?.y || 0,
+    },
+    config: {
+      tension: 750,
+      friction: 150,
+    },
+  });
 
   // Grid rendering function
   const renderGrid = () => {
@@ -164,18 +173,18 @@ export const PricePath = ({
 
       {/* Chart content with animation */}
       <g>
-        <PricePathArea areaPath={areaPath} fillColor={fillColor} />
-
-        <PricePathLine
-          linePath={linePath}
-          color={color}
-          glowColor={glowColor}
+        <PricePathArea areaPath={spring.areaPath} fillColor={fillColor} />
+        <animated.path
+          d={spring.linePath}
+          fill="none"
+          stroke={color}
           strokeWidth={strokeWidth}
-          priceChange={priceChange}
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
 
         <PricePathAnimation
-          animatedSegmentPath={animatedSegmentPath}
+          animatedSegmentPath={spring.linePath}
           delayedPath={delayedPath}
           color={color}
           glowColor={glowColor}
@@ -185,8 +194,8 @@ export const PricePath = ({
         />
 
         <PricePathIndicator
-          x={circleSpring.x}
-          y={circleSpring.y}
+          x={spring.x}
+          y={spring.y}
           radius={circleRadius}
           color={color}
           glowColor={glowColor}
