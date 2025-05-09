@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from 'react';
-import { PricePoint } from '../../../../../types/chart';
-import { D3ScaleFunction } from '../../../../../types/chart';
+import { PricePoint } from '../types/chart';
+import { D3ScaleFunction } from '../types/chart';
 
 export interface PathCalculationProps {
   priceData: PricePoint[];
@@ -21,7 +21,7 @@ export interface PathCalculationProps {
   delayedPathProgress: number;
 }
 
-export const usePathCalculation = ({
+export const useChartPathCalculation = ({
   priceData,
   timeScale,
   priceScale,

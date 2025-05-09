@@ -4,11 +4,13 @@ import React, { useState, useEffect } from "react";
 import { PricePathProps } from "../../../../types/chart";
 import { COLORS } from "@/constants/chart";
 import { TimeAxis } from "./TimeAxis";
-import { usePathCalculation } from "./hooks/usePathCalculation";
+
 import { PricePathLine } from "./PricePathLine";
 import { PricePathArea } from "./PricePathArea";
-import { PricePathAnimation } from "./PricePathAnimation";
-import { PricePathIndicator } from "./PricePathIndicator";
+
+import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
+import { PricePathIndicator } from "./path/PricePathIndicator";
+import { PricePathAnimation } from "./path/PricePathAnimation";
 
 export const PricePath = ({
   priceData,
@@ -46,32 +48,37 @@ export const PricePath = ({
       const lastPoint = priceData[priceData.length - 1];
       return {
         x: timeScale(lastPoint.timestamp),
-        y: priceScale(lastPoint.price)
+        y: priceScale(lastPoint.price),
       };
     }
     return { x: 0, y: 0 };
   });
 
   // Calculate all path data using the hook
-  const { linePath, delayedPath, animatedSegmentPath, areaPath } = usePathCalculation({
-    priceData,
-    timeScale,
-    priceScale,
-    chartHeight,
-    padding,
-    timeAxisHeight,
-    isAnimatingNewSegment,
-    lastTwoPoints,
-    newSegmentProgress,
-    delayedPathData,
-    delayedPathProgress,
-  });
+  const { linePath, delayedPath, animatedSegmentPath, areaPath } =
+    useChartPathCalculation({
+      priceData,
+      timeScale,
+      priceScale,
+      chartHeight,
+      padding,
+      timeAxisHeight,
+      isAnimatingNewSegment,
+      lastTwoPoints,
+      newSegmentProgress,
+      delayedPathData,
+      delayedPathProgress,
+    });
 
   // Update circle position directly without animation frame
   useEffect(() => {
     if (!timeScale || !priceScale || !priceData.length) return;
 
-    if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+    if (
+      isAnimatingNewSegment &&
+      lastTwoPoints?.prev &&
+      lastTwoPoints?.current
+    ) {
       const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
       const startX = timeScale(prevPoint.timestamp);
       const startY = priceScale(prevPoint.price);
@@ -89,7 +96,14 @@ export const PricePath = ({
         y: priceScale(lastPoint.price),
       });
     }
-  }, [timeScale, priceScale, priceData, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
+  }, [
+    timeScale,
+    priceScale,
+    priceData,
+    isAnimatingNewSegment,
+    lastTwoPoints,
+    newSegmentProgress,
+  ]);
 
   // Grid rendering function
   const renderGrid = () => {
@@ -172,7 +186,7 @@ export const PricePath = ({
       {/* Chart content with animation */}
       <g>
         <PricePathArea areaPath={areaPath} fillColor={fillColor} />
-        
+
         <PricePathLine
           linePath={linePath}
           color={color}
