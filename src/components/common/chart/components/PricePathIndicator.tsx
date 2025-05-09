@@ -39,7 +39,7 @@ export const PricePathIndicator: React.FC<PricePathIndicatorProps> = ({
         filter: `drop-shadow(0 0 8px ${glowColor})`,
         transition: isAnimatingNewSegment
           ? "none" // Disable transition during segment animation for precise movement
-          : "fill 0.1s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.1s cubic-bezier(0.16, 1, 0.3, 1), cx 0.1s cubic-bezier(0.16, 1, 0.3, 1), cy 0.1s cubic-bezier(0.16, 1, 0.3, 1)",
+          : "fill 0.01s cubic-bezier(0.34, 1.56, 0.64, 1), stroke 1s cubic-bezier(0.16, 1, 0.3, 1), cx 0.01s cubic-bezier(0.4, 0, 0.2, 1), cy 0s cubic-bezier(0.4, 0, 0.2, 1)",
         willChange: "transform",
         transform: "translateZ(0)", // Force GPU acceleration
       }}

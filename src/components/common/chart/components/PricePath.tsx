@@ -40,8 +40,17 @@ export const PricePath = ({
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
-  // State for circle position
-  const [circlePosition, setCirclePosition] = useState({ x: 0, y: 0 });
+  // State for circle position with initial value from last data point
+  const [circlePosition, setCirclePosition] = useState(() => {
+    if (priceData.length > 0 && timeScale && priceScale) {
+      const lastPoint = priceData[priceData.length - 1];
+      return {
+        x: timeScale(lastPoint.timestamp),
+        y: priceScale(lastPoint.price)
+      };
+    }
+    return { x: 0, y: 0 };
+  });
 
   // Calculate all path data using the hook
   const { linePath, delayedPath, animatedSegmentPath, areaPath } = usePathCalculation({
@@ -58,40 +67,28 @@ export const PricePath = ({
     delayedPathProgress,
   });
 
-  // Update circle position
+  // Update circle position directly without animation frame
   useEffect(() => {
     if (!timeScale || !priceScale || !priceData.length) return;
 
-    let animationFrameId: number;
+    if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
+      const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
+      const startX = timeScale(prevPoint.timestamp);
+      const startY = priceScale(prevPoint.price);
+      const endX = timeScale(currentPoint.timestamp);
+      const endY = priceScale(currentPoint.price);
 
-    const updatePosition = () => {
-      if (isAnimatingNewSegment && lastTwoPoints?.prev && lastTwoPoints?.current) {
-        const { prev: prevPoint, current: currentPoint } = lastTwoPoints;
-        const startX = timeScale(prevPoint.timestamp);
-        const startY = priceScale(prevPoint.price);
-        const endX = timeScale(currentPoint.timestamp);
-        const endY = priceScale(currentPoint.price);
-
-        setCirclePosition({
-          x: startX + (endX - startX) * newSegmentProgress,
-          y: startY + (endY - startY) * newSegmentProgress,
-        });
-      } else if (priceData.length > 0) {
-        const lastPoint = priceData[priceData.length - 1];
-        setCirclePosition({
-          x: timeScale(lastPoint.timestamp),
-          y: priceScale(lastPoint.price),
-        });
-      }
-      animationFrameId = requestAnimationFrame(updatePosition);
-    };
-
-    updatePosition();
-    return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-    };
+      setCirclePosition({
+        x: startX + (endX - startX) * newSegmentProgress,
+        y: startY + (endY - startY) * newSegmentProgress,
+      });
+    } else if (priceData.length > 0) {
+      const lastPoint = priceData[priceData.length - 1];
+      setCirclePosition({
+        x: timeScale(lastPoint.timestamp),
+        y: priceScale(lastPoint.price),
+      });
+    }
   }, [timeScale, priceScale, priceData, isAnimatingNewSegment, lastTwoPoints, newSegmentProgress]);
 
   // Grid rendering function
