@@ -69,14 +69,24 @@ export const useChartScales = (
   }, []);
 
   const timeScale = useMemo(() => {
-    const rightPadding = padding.x * 2;
-    const windowSize = 40000; // 40 seconds window
+    if (priceData.length < 2) return null;
+    
+    // Add padding to the right side
+    const rightPadding = padding.x * 4;
+
+    const now = Date.now();
+    const sixtySecondsAgo = now - 40000; // 40 seconds in milliseconds
+    
+    const domain = [
+      Math.max(sixtySecondsAgo, d3.min(priceData, d => d.timestamp) ?? 0),
+      now
+    ];
     
     return scaleLinear({
-      domain: [currentTime - windowSize, currentTime],
-      range: [0, width - rightPadding],
+      domain,
+      range: [padding.x, width - rightPadding],
     });
-  }, [width, padding.x, currentTime]); // Remove priceData dependency
+  }, [width, padding.x, currentTime]); // Add priceData dependency
 
   // Find the price range for scaling
   const priceRangeBounds = useMemo(() => {
