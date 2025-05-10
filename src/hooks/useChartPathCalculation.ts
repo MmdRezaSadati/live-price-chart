@@ -181,8 +181,8 @@ export const useChartPathCalculation = ({
     x: circlePosition?.x || 0,
     y: circlePosition?.y || 0,
     config: {
-      tension: 750,
-      friction: 150,
+      tension: 50,
+      friction: 10,
     },
   });
 
@@ -206,8 +206,8 @@ export const useChartPathCalculation = ({
       y: computeCirclePositionOnPath?.y || 0,
     },
     config: {
-      tension: 750,
-      friction: 150,
+      tension: 50,
+      friction: 10,
     },
   });
 
