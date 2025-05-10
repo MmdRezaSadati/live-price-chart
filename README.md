@@ -140,7 +140,6 @@ The application is a Progressive Web App (PWA) that can be installed on devices.
 
 - Meta tags optimization
 - Open Graph tags
-- Twitter Cards
 - Sitemap generation
 - Robots.txt
 - Structured data
@@ -162,8 +161,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Mohammad Reza Sadati**
 
-- GitHub: [@mohammadrezasadati](https://github.com/mohammadrezasadati)
-- LinkedIn: [Mohammad Reza Sadati](https://linkedin.com/in/mohammadrezasadati)
+- GitHub: [@mohammadrezasadati](https://github.com/MmdRezaSadati)
+- LinkedIn: [Mohammad Reza Sadati](https://linkedin.com/in/mohammad-reza-sadati)
 
 ## 🙏 Acknowledgments
 
