@@ -142,7 +142,6 @@ The application is a Progressive Web App (PWA) that can be installed on devices.
 
 - Meta tags optimization
 - Open Graph tags
-- Twitter Cards
 - Sitemap generation
 - Robots.txt
 - Structured data
