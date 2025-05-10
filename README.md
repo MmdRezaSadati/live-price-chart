@@ -1,136 +1,183 @@
-# Live Price Chart
+# Live Price Chart 📈
 
-A modern, responsive, and highly performant real-time Bitcoin price chart built with Next.js, React, D3, and WebSocket.
+A real-time cryptocurrency price tracking application with interactive charts, built with Next.js and TypeScript.
 
-## Table of Contents
+![Live Price Chart Demo](public/screenshots/home.png)
 
-- [Demo](#demo)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Development](#development)
-  - [Running Tests](#running-tests)
-  - [Building for Production](#building-for-production)
-  - [Deployment](#deployment)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
-- [License](#license)
+## 🌟 Features
 
-## Demo
+- **Real-time Price Updates**: Live cryptocurrency price tracking with WebSocket integration
+- **Interactive Charts**: Smooth, animated price charts with customizable timeframes
+- **Multiple Cryptocurrencies**: Support for major cryptocurrencies including Bitcoin, Ethereum, and more
+- **Responsive Design**: Beautiful UI that works on all devices
+- **Dark/Light Mode**: Toggle between dark and light themes
+- **Advanced Animations**: Smooth path animations and transitions
+- **Performance Optimized**: Built with performance in mind using Next.js and React Spring
+- **SEO Friendly**: Optimized for search engines with proper metadata
+- **PWA Support**: Install as a Progressive Web App for offline access
 
-A live demo is available at: [https://live-price-chart.vercel.app](https://live-price-chart.vercel.app)
+## 🚀 Tech Stack
 
-## Features
+- **Framework**: [Next.js 14](https://nextjs.org/) with App Router
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Animations**: [React Spring](https://react-spring.dev/)
+- **Charts**: [D3.js](https://d3js.org/) with [Visx](https://airbnb.io/visx/)
+- **State Management**: React Hooks
+- **WebSocket**: Native WebSocket API
+- **Testing**: Jest and React Testing Library
+- **Linting**: ESLint with TypeScript support
+- **Formatting**: Prettier
+- **CI/CD**: GitHub Actions
 
-- Real-time Bitcoin price updates via Binance WebSocket API
-- Smooth line and price animations
-- Time range selection (1m, 5m, 15m, 1h, 4h, etc.)
-- Dynamic scales with D3 for time and price axes
-- Dark mode styling with Tailwind CSS
-- Comprehensive unit and integration tests (44+ tests)
+## 📦 Installation
 
-## Tech Stack
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/mohammadrezasadati/live-price-chart.git
+   cd live-price-chart
+   ```
 
-- **Framework**: Next.js 14 (App Router)
-- **Languages**: TypeScript, JavaScript
-- **Styling**: Tailwind CSS
-- **Charting**: D3.js, Tangram VizX (visx)
-- **Animations**: React hooks with `requestAnimationFrame` and D3
-- **Testing**: Jest, React Testing Library
-- **Bundler**: Webpack (via Next.js)
-- **Deployment**: Vercel
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
 
-## Getting Started
+3. Create a `.env.local` file in the root directory:
+   ```env
+   NEXT_PUBLIC_API_URL=your_api_url
+   NEXT_PUBLIC_GA_ID=your_ga_id
+   ```
 
-### Prerequisites
+4. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
 
-- Node.js v18 or later
-- npm v9 or later (or Yarn)
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Installation
+## 🛠️ Development
 
-```bash
-# Clone the repository
-git clone https://github.com/MmdRezaSadati/live-price-chart.git
-cd live-price-chart
+### Project Structure
 
-# Install dependencies
-npm install
-``` 
-
-### Development
-
-```bash
-# Start the development server
-npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the app.
-
-### Running Tests
-
-```bash
-# Run all tests once
-npm test
-
-# Watch mode
-npm test -- --watch
-``` 
-
-All unit and integration tests must pass before merging.
-
-### Building for Production
-
-```bash
-npm run build
-npm start
-```
-
-### Deployment
-
-This project is optimized for Vercel. Simply link the GitHub repository to your Vercel account and deploy.
-
-## Project Structure
-
-```text
+live-price-chart/
+├── public/              # Static files
 ├── src/
-│   ├── app/                  # Next.js App Router pages
-│   │   ├── layout.tsx        # Root layout
-│   │   └── page.tsx          # Home page
-│   ├── components/           # Reusable UI components
-│   ├── hooks/                # Custom React hooks (useWebSocket, useChartScales, animations)
-│   ├── constants/            # Application constants (colors, symbols)
-│   ├── types/                # TypeScript type definitions
-│   ├── styles/               # Global and component-level styles
-│   └── __tests__/            # All test files
-├── babel.config.js           # Babel configuration (automatic JSX runtime)
-├── jest.config.cjs           # Jest configuration
-├── postcss.config.js         # PostCSS configuration
-├── tailwind.config.js        # Tailwind CSS configuration
-└── README.md                 # This file
+│   ├── app/            # Next.js app router pages
+│   ├── components/     # React components
+│   ├── constants/      # Constants and configurations
+│   ├── hooks/          # Custom React hooks
+│   ├── services/       # API and WebSocket services
+│   ├── styles/         # Global styles
+│   ├── types/          # TypeScript type definitions
+│   └── utils/          # Utility functions
+├── tests/              # Test files
+└── package.json        # Project dependencies
 ```
 
-## Configuration
+### Available Scripts
 
-- **Babel**: Uses `@babel/preset-react` with `runtime: 'automatic'` to avoid manual React imports.
-- **Tailwind**: Configured in `tailwind.config.js`.
-- **Jest**: Setup in `jest.config.cjs`, with mocks and global setup in `jest.setup.js`.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage
 
-### Environment Variables
+## 🧪 Testing
 
-No environment variables are required for local development. The WebSocket URL is hard-coded for the Binance BTC/USDT stream.
+The project uses Jest and React Testing Library for testing. Run tests with:
 
-## Contributing
+```bash
+npm run test
+```
 
-Contributions are welcome! Please open an issue or submit a pull request with clear descriptions and passing tests.
+For test coverage:
+
+```bash
+npm run test:coverage
+```
+
+## 📱 Progressive Web App
+
+The application is a Progressive Web App (PWA) that can be installed on devices. Features include:
+
+- Offline support
+- Install to home screen
+- Push notifications (coming soon)
+- Automatic updates
+
+## 🔒 Security
+
+- HTTPS enforced
+- Content Security Policy (CSP)
+- XSS protection
+- CSRF protection
+- Rate limiting
+- Input validation
+- Secure headers
+
+## 📈 Performance
+
+- Server-side rendering (SSR)
+- Static site generation (SSG)
+- Image optimization
+- Code splitting
+- Lazy loading
+- Bundle size optimization
+- Caching strategies
+
+## 🌐 SEO
+
+- Meta tags optimization
+- Open Graph tags
+- Twitter Cards
+- Sitemap generation
+- Robots.txt
+- Structured data
+- Canonical URLs
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a new branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m "feat: add awesome feature"`)
-4. Push to the branch (`git push origin feature/your-feature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-Ensure all tests pass and adhere to the repository coding style.
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+**Mohammad Reza Sadati**
+
+- GitHub: [@mohammadrezasadati](https://github.com/mohammadrezasadati)
+- LinkedIn: [Mohammad Reza Sadati](https://linkedin.com/in/mohammadrezasadati)
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) team for the amazing framework
+- [D3.js](https://d3js.org/) for the powerful visualization library
+- [React Spring](https://react-spring.dev/) for the smooth animations
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
+
+## 📞 Support
+
+For support, email support@live-price-chart.com or open an issue in the GitHub repository.
+
+---
+
+Made with ❤️ by Mohammad Reza Sadati
