@@ -28,41 +28,39 @@ A real-time cryptocurrency price tracking application with interactive charts, b
 - **Testing**: Jest and React Testing Library
 - **Linting**: ESLint with TypeScript support
 - **Formatting**: Prettier
+- **Package Manager**: [pnpm](https://pnpm.io/)
 - **CI/CD**: GitHub Actions
 
 ## 📦 Installation
 
-1. Clone the repository:
+1. Install pnpm (if not already installed):
+   ```bash
+   npm install -g pnpm
+   ```
+
+2. Clone the repository:
    ```bash
    git clone https://github.com/mohammadrezasadati/live-price-chart.git
    cd live-price-chart
    ```
 
-2. Install dependencies:
+3. Install dependencies:
    ```bash
-   npm install
-   # or
-   yarn install
-   # or
    pnpm install
    ```
 
-3. Create a `.env.local` file in the root directory:
+4. Create a `.env.local` file in the root directory:
    ```env
    NEXT_PUBLIC_API_URL=your_api_url
    NEXT_PUBLIC_GA_ID=your_ga_id
    ```
 
-4. Start the development server:
+5. Start the development server:
    ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
    pnpm dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🛠️ Development
 
@@ -86,27 +84,27 @@ live-price-chart/
 
 ### Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
-- `npm run test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
+- `pnpm lint` - Run ESLint
+- `pnpm format` - Format code with Prettier
+- `pnpm test` - Run tests
+- `pnpm test:watch` - Run tests in watch mode
+- `pnpm test:coverage` - Run tests with coverage
 
 ## 🧪 Testing
 
 The project uses Jest and React Testing Library for testing. Run tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 For test coverage:
 
 ```bash
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ## 📱 Progressive Web App
@@ -173,6 +171,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [D3.js](https://d3js.org/) for the powerful visualization library
 - [React Spring](https://react-spring.dev/) for the smooth animations
 - [Tailwind CSS](https://tailwindcss.com/) for the utility-first CSS framework
+- [pnpm](https://pnpm.io/) for the fast, disk space efficient package manager
 
 ## 📞 Support
 
