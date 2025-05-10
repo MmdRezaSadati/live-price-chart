@@ -45,7 +45,7 @@ export const PricePath = ({
   const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
   // Calculate all path data using the hook with enhanced smoothing
-  const { delayedPath, spring } = useChartPathCalculation({
+  const { areaPath, spring } = useChartPathCalculation({
     priceData,
     timeScale,
     priceScale,
@@ -92,17 +92,16 @@ export const PricePath = ({
       <g>
         <PricePathArea areaPath={spring.areaPath} fillColor={fillColor} />
         <animated.path
-          d={spring.linePath}
+          d={spring.linePath.get()}
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-
         <PricePathAnimation
           animatedSegmentPath={spring.linePath}
-          delayedPath={delayedPath}
+          delayedPath={spring.linePath.get()}
           color={color}
           glowColor={glowColor}
           strokeWidth={strokeWidth}

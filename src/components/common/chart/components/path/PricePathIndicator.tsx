@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { animated, SpringValue } from "@react-spring/web";
+import { animated, SpringValue, useSpring } from "@react-spring/web";
 
 interface PricePathIndicatorProps {
   x: SpringValue<number>;
@@ -24,11 +24,21 @@ export const PricePathIndicator: React.FC<PricePathIndicatorProps> = ({
   darkMode,
   isAnimatingNewSegment,
 }) => {
+  const delayedSpring = useSpring({
+    from: { x: x.get() },
+    to: { x: x.get() - 10 },
+    delay: 100,
+    config: {
+      tension: 50,
+      friction: 15,
+    },
+  });
+
   return (
     <>
       {/* Glow effect */}
       <animated.circle
-        cx={x}
+        cx={delayedSpring.x}
         cy={y}
         r={radius * 2}
         fill={glowColor}
@@ -38,7 +48,7 @@ export const PricePathIndicator: React.FC<PricePathIndicatorProps> = ({
 
       {/* Main circle */}
       <animated.circle
-        cx={x}
+        cx={delayedSpring.x}
         cy={y}
         r={radius}
         fill={color}

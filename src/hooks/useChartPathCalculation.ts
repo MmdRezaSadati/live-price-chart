@@ -1,7 +1,6 @@
 "use client";
-
 import { useSpring } from "@react-spring/web";
-import { curveNatural } from "@visx/curve";
+import { curveNatural } from "d3";
 import * as d3 from "d3";
 import { useMemo } from "react";
 import { D3ScaleFunction, PricePoint } from "../types/chart";
@@ -178,11 +177,12 @@ export const useChartPathCalculation = ({
   // Create a single spring animation for both path and circle
   const spring = useSpring({
     d: animatedPath,
-    x: circlePosition?.x || 0,
-    y: circlePosition?.y || 0,
+    x: computeCirclePositionOnPath?.x || 0,
+    y: computeCirclePositionOnPath?.y || 0,
+    areaPath,
     config: {
-      tension: 50,
-      friction: 10,
+      tension: 0,
+      friction: 0,
     },
   });
 
@@ -206,8 +206,8 @@ export const useChartPathCalculation = ({
       y: computeCirclePositionOnPath?.y || 0,
     },
     config: {
-      tension: 50,
-      friction: 10,
+      tension: 800,
+      friction: 0,
     },
   });
 
