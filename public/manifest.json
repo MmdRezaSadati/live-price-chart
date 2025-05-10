@@ -1,5 +1,5 @@
 {
-  "name": "Live Price Chart",
+  "name": "Live Price Chart by Mohammad Reza Sadati",
   "short_name": "Price Chart",
   "description": "Real-time cryptocurrency price tracking with interactive charts",
   "start_url": "/",
@@ -41,5 +41,6 @@
     }
   ],
   "related_applications": [],
-  "prefer_related_applications": false
-} 
+  "prefer_related_applications": false,
+  "author": "Mohammad Reza Sadati"
+}

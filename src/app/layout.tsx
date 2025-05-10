@@ -1,17 +1,16 @@
 import React from "react";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Live Price Chart - Real-time Cryptocurrency Price Tracking",
-  description: "Track cryptocurrency prices in real-time with our interactive live price chart. Get instant updates, historical data, and market insights.",
-  keywords: "cryptocurrency, live price, price chart, real-time tracking, crypto market, bitcoin, ethereum",
-  authors: [{ name: "Realtyna" }],
-  creator: "Realtyna",
-  publisher: "Realtyna",
+  description:
+    "Track cryptocurrency prices in real-time with our interactive live price chart. Get instant updates, historical data, and market insights.",
+  keywords:
+    "cryptocurrency, live price, price chart, real-time tracking, crypto market, bitcoin, ethereum",
+  authors: [{ name: "Mohamad Reza Sadati" }],
+  creator: "Mohamad Reza Sadati",
+  publisher: "Mohamad Reza Sadati",
   formatDetection: {
     email: false,
     address: false,
@@ -23,7 +22,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Live Price Chart - Real-time Cryptocurrency Price Tracking",
-    description: "Track cryptocurrency prices in real-time with our interactive live price chart. Get instant updates, historical data, and market insights.",
+    description:
+      "Track cryptocurrency prices in real-time with our interactive live price chart. Get instant updates, historical data, and market insights.",
     url: "https://live-price-chart.vercel.app",
     siteName: "Live Price Chart",
     images: [
@@ -36,14 +36,7 @@ export const metadata: Metadata = {
     ],
     locale: "en_US",
     type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Live Price Chart - Real-time Cryptocurrency Price Tracking",
-    description: "Track cryptocurrency prices in real-time with our interactive live price chart. Get instant updates, historical data, and market insights.",
-    images: ["/twitter-image.png"],
-    creator: "@realtyna",
-  },
+  },,
   robots: {
     index: true,
     follow: true,
@@ -55,11 +48,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  verification: {
-    google: "your-google-site-verification",
-    yandex: "your-yandex-verification",
-    yahoo: "your-yahoo-verification",
-  },
 };
 
 export default function RootLayout({
@@ -69,9 +57,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
