@@ -176,10 +176,19 @@ export const useChartPathCalculation = ({
 
   // Create a single spring animation for both path and circle
   const spring = useSpring({
-    d: animatedPath,
-    x: computeCirclePositionOnPath?.x || 0,
-    y: computeCirclePositionOnPath?.y || 0,
-    areaPath,
+    from: {
+      d: animatedPath || '',
+      x: computeCirclePositionOnPath?.x || 0,
+      y: computeCirclePositionOnPath?.y || 0,
+      areaPath: areaPath || '',
+    },
+    to: {
+      d: animatedPath || '',
+      x: computeCirclePositionOnPath?.x || 0,
+      y: computeCirclePositionOnPath?.y || 0,
+      areaPath: areaPath || '',
+    },
+    immediate: true,
     config: {
       tension: 0,
       friction: 0,
@@ -188,23 +197,25 @@ export const useChartPathCalculation = ({
 
   // Calculate the final line path by combining base path and animated segment
   const finalLinePath = useMemo(() => {
-    return basePath + spring.d;
+    const animatedSegment = spring.d.get() || '';
+    return basePath + animatedSegment;
   }, [basePath, spring.d]);
 
   // Create spring animations for paths
   const springCircle = useSpring({
     from: {
-      areaPath,
-      linePath: finalLinePath,
+      areaPath: areaPath || '',
+      linePath: finalLinePath || '',
       x: computeCirclePositionOnPath?.x || 0,
       y: computeCirclePositionOnPath?.y || 0,
     },
     to: {
-      areaPath,
-      linePath: finalLinePath,
+      areaPath: areaPath || '',
+      linePath: finalLinePath || '',
       x: computeCirclePositionOnPath?.x || 0,
       y: computeCirclePositionOnPath?.y || 0,
     },
+    immediate: true,
     config: {
       tension: 800,
       friction: 0,
@@ -213,15 +224,19 @@ export const useChartPathCalculation = ({
 
   // Create a single object for both path and circle position
   const animatedValues = useMemo(() => {
+    const currentD = spring.d.get() || '';
+    const currentX = spring.x.get() || 0;
+    const currentY = spring.y.get() || 0;
+
     return {
-      linePath: finalLinePath,
-      delayedPath,
-      animatedSegmentPath: spring.d,
-      areaPath,
-      circlePosition: { x: spring.x, y: spring.y },
+      linePath: finalLinePath || '',
+      delayedPath: delayedPath || '',
+      animatedSegmentPath: currentD,
+      areaPath: areaPath || '',
+      circlePosition: { x: currentX, y: currentY },
       spring: springCircle,
     };
-  }, [finalLinePath, delayedPath, spring.d, areaPath, spring.x, spring.y]);
+  }, [finalLinePath, delayedPath, spring.d, spring.x, spring.y, areaPath]);
 
   return animatedValues;
 };
