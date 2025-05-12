@@ -7,7 +7,19 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5.0.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
   [![D3.js](https://img.shields.io/badge/D3.js-7.8.0-orange?style=for-the-badge&logo=d3.js)](https://d3js.org/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3.0-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+  [![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://live-price-chart.vercel.app)
 </div>
+
+## 🎮 Live Demo
+
+Experience the live chart in action: [Live Price Chart Demo](https://live-price-chart.vercel.app)
+
+Key features you can try:
+- Real-time price updates
+- Interactive chart with smooth animations
+- Hover over the chart to see detailed price information
+- Watch the dynamic color changes as prices move
+- Test the responsive design by resizing your browser
 
 ## ✨ Features
 
