@@ -94,7 +94,7 @@ src/
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/live-price-chart.git
+git clone https://github.com/mohammadrezasadati/live-price-chart.git
 
 # Install dependencies
 pnpm install
@@ -149,8 +149,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  Made with ❤️ by [Your Name]
+  Made with ❤️ by Mohammad Reza Sadati
   
-  [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/yourusername)
-  [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/yourusername)
+  [![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/MmdRezaSadati)
+  [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com/in/mohammad-reza-sadati)
 </div>
