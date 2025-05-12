@@ -71,14 +71,14 @@ export const CHART_ANIMATION = {
 };
 
 /**
+ * Maximum number of data points to keep in the chart
+ */
+export const MAX_DATA_POINTS = 40;
+
+/**
  * Bitcoin symbol is fixed - this is a Bitcoin-only chart
  */
 export const BITCOIN_SYMBOL = 'btcusdt';
-
-/**
- * Maximum number of data points to keep in the chart
- */
-export const MAX_DATA_POINTS = 150;
 
 /**
  * Time range options for the chart

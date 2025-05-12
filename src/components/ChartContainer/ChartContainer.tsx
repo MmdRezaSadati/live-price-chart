@@ -1,22 +1,8 @@
 "use client";
 
-import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
-
-// Import LivePriceChart dynamically with loading state
-const LivePriceChart = dynamic(() => import('../common/chart/LivePriceChart'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center w-full h-full min-h-[400px] md:min-h-[500px] rounded-xl overflow-hidden bg-[#0f172a]">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-t-transparent animate-spin"
-          style={{ borderColor: '#fcd34d transparent #fcd34d #fcd34d' }}>
-        </div>
-        <p className="text-base md:text-lg font-bold text-[#fcd34d]">Loading chart...</p>
-      </div>
-    </div>
-  )
-});
+import { useEffect, useState, useMemo } from 'react';
+import { LivePriceChart } from '../common/chart/LivePriceChart';
+import * as d3 from 'd3';
 
 /**
  * Container component for the Bitcoin price chart
@@ -25,6 +11,8 @@ const LivePriceChart = dynamic(() => import('../common/chart/LivePriceChart'), {
 export default function ChartContainer() {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Update dimensions when container size changes
   useEffect(() => {
@@ -54,16 +42,60 @@ export default function ChartContainer() {
     };
   }, [containerRef]);
 
+  // Simulate loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-200 mb-2">Error Loading Chart</h3>
+          <p className="text-gray-400">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-yellow-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading chart data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       ref={setContainerRef}
-      className="w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-[600px]"
+      className="w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-[600px] relative"
     >
       {dimensions.width > 0 && (
+        <div className="absolute inset-0 transition-opacity duration-300">
         <LivePriceChart 
           width={dimensions.width} 
           height={dimensions.height || Math.max(400, dimensions.width * 0.5)} 
         />
+        </div>
       )}
     </div>
   );

@@ -12,7 +12,6 @@ export interface PricePoint {
 export interface LivePriceChartProps {
   width?: number;
   height?: number;
-  onPriceUpdate?: (price: number) => void;
 }
 
 /**

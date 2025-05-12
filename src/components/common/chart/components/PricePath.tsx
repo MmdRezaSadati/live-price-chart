@@ -6,9 +6,7 @@ import * as d3 from "d3";
 import { useMemo } from "react";
 import { PricePathProps } from "../../../../types/chart";
 import { TimeAxis } from "./TimeAxis";
-
 import { PricePathArea } from "./PricePathArea";
-
 import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
 import { PricePathAnimation } from "./path/PricePathAnimation";
 import { PricePathIndicator } from "./path/PricePathIndicator";
@@ -68,6 +66,14 @@ export const PricePath = ({
       style={{ marginTop: `${headerHeight}px` }}
       className="chart-svg"
     >
+      {/* Define glow filter */}
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
       {/* Grid lines with values */}
       <ChartGrid
         priceData={priceData}
@@ -101,7 +107,7 @@ export const PricePath = ({
         />
         <PricePathAnimation
           animatedSegmentPath={spring.linePath}
-          delayedPath={spring.linePath.get()}
+          delayedPath={""}
           color={color}
           glowColor={glowColor}
           strokeWidth={strokeWidth}
@@ -131,8 +137,11 @@ export const PricePath = ({
           }}
           priceData={priceData}
           fontSize={fontSize}
+          x={0}
+          y={0}
+          data={[]}
         />
       </g>
     </svg>
   );
-};
+}; 

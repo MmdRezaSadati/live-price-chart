@@ -1,245 +1,338 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
-import { LivePriceChartProps } from "../../../types/chart";
-import { COLORS } from "../../../constants/chart";
-import ChartHeader from "@/components/ChartHeader";
-import { TimeRangeControls } from "./components/TimeRangeControls";
-import { PricePath } from "./components/PricePath";
-import { ChartStats } from "./components/ChartStats";
+import { useEffect, useRef, useState } from "react";
+import * as d3 from "d3";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import {
-  useLineDrawAnimation,
-  usePriceAnimation,
-} from "@/hooks/useChartAnimations";
-import { useChartScales } from "@/hooks/useChartScales";
+import { LivePriceChartProps } from "@/types/chart";
+import { BITCOIN_SYMBOL, MAX_DATA_POINTS } from "@/constants/chart";
 
-/**
- * Bitcoin Live Price Chart Component
- *
- * Displays real-time Bitcoin price data with animations and responsive design
- */
-const LivePriceChart = ({
+export const LivePriceChart = ({
   width = 800,
-  height = 500,
-  onPriceUpdate = () => {}, // Default no-op function
+  height = 400,
 }: LivePriceChartProps) => {
-  // Time range selection state
-  const [timeRange, setTimeRange] = useState<string>("1m");
-  const [chartColor, setChartColor] = useState<string>(COLORS.down);
-
-  // Chart element references
-  const chartContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Zoom precision factor - controls how much the chart zooms in/out
-  const zoomPrecision = 0.4; // Shows +/- $0.1 from current price
-
-  // Setup WebSocket connection and get price data
-  const {
-    priceData,
-    currentPrice,
-    isNewPoint,
-    setIsNewPoint,
-    priceChange,
-    priceChangeValue,
-    lastPriceRef,
-    isLoading,
-    loadingProgress
-  } = useWebSocket(onPriceUpdate);
-
-  const isPositiveChange = priceChange >= 0;
-  // Animate price changes - destructure to get just the price value
-  const { animatedPrice } = usePriceAnimation(currentPrice, zoomPrecision);
-
-  // Animate line drawing for new points with continuous animation
-  const { 
-    newSegmentProgress,
-    isAnimatingNewSegment,
-    lastTwoPoints,
-    delayedPathData,
-    delayedPathProgress,
-    isAnimatingDelayedPath
-  } = useLineDrawAnimation(
-    isNewPoint,
-    setIsNewPoint,
-    priceData
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [isStopped, setIsStopped] = useState(false);
+  const [priceChange, setPriceChange] = useState<"up" | "down" | null>(null);
+  const { priceData, isLoading, lastPrice, stopWebSocket } = useWebSocket(
+    () => {}
   );
 
-  // Update chart color based on price direction
   useEffect(() => {
-    // No update needed if we don't have an animated price
-    if (animatedPrice === 0) return;
+    if (!svgRef.current || isLoading || priceData.length === 0) return;
 
-    // Set color based on the last price comparison (stored in WebSocket hook)
-    const lastPrice = lastPriceRef.current;
-    if (lastPrice === null) return;
+    const svg = d3.select(svgRef.current);
+    const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
 
-    // Update color based on price movement
-    const colorToUse = isPositiveChange ? COLORS.up : COLORS.down;
-    setChartColor(colorToUse);
-  }, [animatedPrice, lastPriceRef, isPositiveChange]);
+    // Clear previous content
+    svg.selectAll("*").remove();
 
-  // Calculate responsive sizes for chart elements
-  const fontSize = useMemo(
-    () => ({
-      title: Math.max(16, Math.min(20, width / 40)),
-      price: Math.max(18, Math.min(24, width / 33)),
-      small: Math.max(10, Math.min(14, width / 57)),
-      labels: Math.max(9, Math.min(11, width / 80)),
-    }),
-    [width]
-  );
+    // Calculate y domain with padding
+    const min = d3.min(priceData) ?? 0;
+    const max = d3.max(priceData) ?? 0;
+    const padding = (max - min) * 0.15 || 1;
+    const yDomainMin = min - padding;
+    const yDomainMax = max + padding;
 
-  const iconSize = useMemo(
-    () => Math.max(28, Math.min(40, width / 20)),
-    [width]
-  );
-  const padding = useMemo(
-    () => ({
-      x: Math.max(16, Math.min(24, width / 40)),
-      y: Math.max(10, Math.min(16, height / 31)),
-    }),
-    [width, height]
-  );
-  const circleRadius = useMemo(
-    () => Math.max(4, Math.min(6, width / 150)),
-    [width]
-  );
-  const strokeWidth = useMemo(
-    () => Math.max(2, Math.min(3, width / 300)),
-    [width]
-  );
-  const headerHeight = useMemo(
-    () => Math.max(50, Math.min(70, height / 7)),
-    [height]
-  );
+    // Create scales
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, MAX_DATA_POINTS - 1])
+      .range([0, innerWidth]);
 
-  // Setup scales and path generators for the chart
-  const { timeScale, priceScale } = useChartScales(
-    priceData,
-    {
-      width,
-      height,
-      padding,
-      headerHeight
-    },
-    {
-      animatedPrice,
-      zoomPrecision
+    const yScale = d3
+      .scaleLinear()
+      .domain([yDomainMin, yDomainMax])
+      .range([innerHeight, 0]);
+
+    // Create line generator
+    const line = d3
+      .line<number>()
+      .x((_, i) => xScale(i))
+      .y((d) => yScale(d))
+      .curve(d3.curveCatmullRom.alpha(0.7));
+
+    // Create area generator with fixed baseline at the bottom of the chart
+    const area = d3
+      .area<number>()
+      .x((_, i) => xScale(i))
+      .y0(() => yScale.range()[0])
+      .y1((d) => yScale(d))
+      .curve(d3.curveCatmullRom.alpha(0.7));
+
+    // Create group for chart
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Add clip path
+    g.append("defs")
+      .append("clipPath")
+      .attr("id", "clip")
+      .append("rect")
+      .attr("width", innerWidth)
+      .attr("height", innerHeight);
+
+    // Add axes
+    g.append("g")
+      .attr("transform", `translate(0,${innerHeight})`)
+      .call(d3.axisBottom(xScale));
+
+    g.append("g").call(d3.axisLeft(yScale));
+
+    // Create line group with clip path
+    const lineGroup = g.append("g").attr("clip-path", "url(#clip)");
+
+    // Add shadow filter
+    const defs = svg.append("defs");
+
+    // Enhanced glow filter with multiple layers
+    const filter = defs
+      .append("filter")
+      .attr("id", "glow")
+      .attr("x", "-50%")
+      .attr("y", "-50%")
+      .attr("width", "200%")
+      .attr("height", "200%");
+
+    // Primary glow
+    filter
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "6")
+      .attr("result", "coloredBlur");
+
+    // Secondary glow for extra depth
+    filter
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "3")
+      .attr("result", "coloredBlur2");
+
+    const feMerge = filter.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "coloredBlur");
+    feMerge.append("feMergeNode").attr("in", "coloredBlur2");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    // Add gradient definitions with multiple color stops
+    const createGradient = (id: string, color: string) => {
+      const gradient = defs
+        .append("linearGradient")
+        .attr("id", id)
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "0%")
+        .attr("y2", "100%");
+
+      // Multiple gradient stops for more depth and visual interest
+      gradient
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0.6);
+
+      gradient
+        .append("stop")
+        .attr("offset", "30%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0.4);
+
+      gradient
+        .append("stop")
+        .attr("offset", "70%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0.2);
+
+      gradient
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", color)
+        .attr("stop-opacity", 0);
+    };
+
+    // Modern color palette with vibrant colors
+    const colors = {
+      up: {
+        primary: "#10b981",
+        secondary: "#059669",
+        gradient: "#34d399",
+        glow: "#6ee7b7",
+      },
+      down: {
+        primary: "#f43f5e",
+        secondary: "#e11d48",
+        gradient: "#fb7185",
+        glow: "#fda4af",
+      },
+      neutral: {
+        primary: "#3b82f6",
+        secondary: "#2563eb",
+        gradient: "#60a5fa",
+        glow: "#93c5fd",
+      },
+    };
+
+    createGradient("area-gradient-up", colors.up.gradient);
+    createGradient("area-gradient-down", colors.down.gradient);
+
+    // Add area path first (so it appears behind the line)
+    const areaPath = lineGroup
+      .append("path")
+      .datum(priceData)
+      .attr("class", "area")
+      .attr("fill", `url(#area-gradient-${priceChange || "up"})`)
+      .attr("d", area);
+
+    // تابع محاسبه مدت زمان transition بر اساس میزان تغییر
+    const calculateTransitionDuration = (currentPrice: number, previousPrice: number) => {
+      const priceChange = Math.abs(currentPrice - previousPrice);
+      const percentageChange = (priceChange / previousPrice) * 100;
+      
+      // برای تغییرات بزرگتر، مدت زمان transition بیشتر می‌شود
+      if (percentageChange > 5) return 1500; // تغییرات بزرگ
+      if (percentageChange > 2) return 1000; // تغییرات متوسط
+      if (percentageChange > 0.5) return 800; // تغییرات کوچک
+      return 500; // تغییرات خیلی کوچک
+    };
+
+    // Add main line without shadow or glow
+    const path = lineGroup
+      .append("path")
+      .datum(priceData)
+      .attr("class", "line")
+      .attr("fill", "none")
+      .attr("stroke", "#d7ed47")
+      .attr("stroke-width", 3.5)
+      .attr("stroke-linecap", "round")
+      .attr("stroke-linejoin", "round")
+      .attr("d", line)
+      .transition()
+      .duration(calculateTransitionDuration(priceData[priceData.length - 1], priceData[priceData.length - 2] || priceData[priceData.length - 1]))
+      .ease(d3.easeCubicInOut) // تغییر به easeCubicInOut برای حرکت نرم‌تر
+      .on("start", tick);
+
+    // Add latest point circle with enhanced styling
+    const latestPointCircle = g
+      .append("circle")
+      .attr("r", 7)
+      .style("fill", "#fff")
+      .style("stroke", "white")
+      .style("stroke-width", "3.5px");
+    // .style("filter", "url(#glow)");
+
+    // Add current price text with enhanced styling
+    const priceText = g
+      .append("text")
+      .attr("x", innerWidth - 10)
+      .attr("y", 20)
+      .attr("text-anchor", "end")
+      .style("font-size", "20px")
+      .style("font-weight", "800")
+      .style(
+        "fill",
+        priceChange === "up"
+          ? colors.up.primary
+          : priceChange === "down"
+            ? colors.down.primary
+            : colors.neutral.primary
+      )
+      .style("filter", "url(#glow)")
+      .style("text-shadow", "0 0 15px rgba(0,0,0,0.3)");
+
+    // Initial position of latest point and price text
+    const lastIdx = priceData.length - 1;
+    latestPointCircle
+      .attr("cx", xScale(lastIdx))
+      .attr("cy", yScale(priceData[lastIdx]));
+    priceText.text(`$${priceData[lastIdx].toFixed(2)}`);
+
+    function tick(this: SVGPathElement) {
+      const path = d3.select(this);
+      const pathData = line(priceData);
+      if (pathData) {
+        // Update area path first
+        areaPath
+          .datum(priceData)
+          .attr("d", area)
+          .attr("fill", `url(#area-gradient-${priceChange || "up"})`);
+
+        // Then update the line
+        path
+          .attr("d", pathData)
+          .attr("transform", null)
+          .attr("stroke", "#d7ed47")
+          .attr("stroke-width", 3.5)
+          .attr("filter", null);
+      }
+
+      const active = d3.active(this);
+      if (active && !isStopped) {
+        active
+          .attr("transform", `translate(${xScale(0)},0)`)
+          .transition()
+          .duration(calculateTransitionDuration(priceData[priceData.length - 1], priceData[priceData.length - 2] || priceData[priceData.length - 1]))
+          .ease(d3.easeCubicInOut)
+          .on("start", tick);
+      }
+
+      // Update latest point position and price text
+      const lastIdx = priceData.length - 1;
+      latestPointCircle
+        .transition()
+        .duration(calculateTransitionDuration(priceData[lastIdx], priceData[lastIdx - 1] || priceData[lastIdx]))
+        .ease(d3.easeCubicInOut)
+        .attr("cx", xScale(lastIdx))
+        .attr("cy", yScale(priceData[lastIdx]))
+        .style("fill", "#fff");
+
+      priceText
+        .text(`$${priceData[lastIdx].toFixed(2)}`)
+        .style(
+          "fill",
+          priceChange === "up"
+            ? colors.up.primary
+            : priceChange === "down"
+              ? colors.down.primary
+              : colors.neutral.primary
+        );
     }
-  );
+  }, [priceData, lastPrice, width, height, isLoading, isStopped, priceChange]);
 
-  // Handle time range selection
-  const handleTimeRangeChange = (range: string) => {
-    setTimeRange(range);
-    // In a real implementation, this would fetch different timeframe data
+  // Update price change direction when new data arrives
+  useEffect(() => {
+    if (priceData.length >= 2) {
+      const currentPrice = priceData[priceData.length - 1];
+      const previousPrice = priceData[priceData.length - 2];
+      setPriceChange(
+        currentPrice > previousPrice
+          ? "up"
+          : currentPrice < previousPrice
+            ? "down"
+            : null
+      );
+    }
+  }, [priceData]);
+
+  const handleStop = () => {
+    setIsStopped(true);
+    stopWebSocket();
   };
 
-  // Loading state
-  if (
-    typeof window === "undefined" ||
-    priceData.length < 2 ||
-    !timeScale ||
-    !priceScale ||
-    animatedPrice === 0 ||
-    isLoading
-  ) {
+  if (isLoading) {
     return (
-      <div
-        role="status"
-        className="flex items-center justify-center w-full h-full rounded-xl overflow-hidden shadow-2xl"
-        style={{ backgroundColor: COLORS.background, width, height }}
-      >
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative w-16 h-16">
-          <div
-            className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
-            style={{
-              borderColor: `${COLORS.accent} transparent ${COLORS.accent} ${COLORS.accent}`,
-            }}
-          ></div>
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center text-xs font-bold" style={{ color: COLORS.accent }}>
-                {Math.round(loadingProgress * 100)}%
-              </div>
-            )}
-          </div>
-          <p className="text-lg font-bold" style={{ color: COLORS.accent }}>
-            {isLoading ? "Loading initial price data..." : "Loading Bitcoin data..."}
-          </p>
-        </div>
+      <div className="flex items-center justify-center w-full h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  // Format data for display
-  const formattedPrice = typeof animatedPrice === 'number' ? animatedPrice.toFixed(2) : '0.00';
-  const formattedChange = typeof priceChange === 'number' ? priceChange.toFixed(2) : '0.00';
-  const glowColor = isPositiveChange ? COLORS.upGlow : COLORS.downGlow;
-
   return (
-    <div
-      className="relative rounded-xl overflow-hidden shadow-2xl w-full h-full"
-      ref={chartContainerRef}
-      style={{ backgroundColor: COLORS.background }}
-    >
-      {/* Chart Header */}
-      <ChartHeader
-        price={formattedPrice}
-        priceColor={chartColor}
-        glowColor={glowColor}
-        priceChange={formattedChange}
-        priceChangeValue={priceChangeValue}
-        isPositiveChange={isPositiveChange}
-        fontSize={fontSize}
-        iconSize={iconSize}
-        padding={padding}
-        headerHeight={headerHeight}
-      />
-
-      {/* Time Range Controls */}
-      <TimeRangeControls
-        selectedRange={timeRange}
-        onRangeChange={handleTimeRangeChange}
-        headerHeight={headerHeight}
-        padding={padding}
-        fontSize={{ small: fontSize.small }}
-      />
-
-      {/* Price Chart */}
-      <PricePath
-        priceData={priceData}
-        timeScale={timeScale}
-        priceScale={priceScale}
+    <div className="relative">
+      <svg
+        ref={svgRef}
         width={width}
         height={height}
-        headerHeight={headerHeight}
-        padding={padding}
-        chartColor={chartColor}
-        glowColor={glowColor}
-        strokeWidth={strokeWidth}
-        circleRadius={circleRadius}
-        fontSize={{ labels: fontSize.labels }}
-        priceChange={priceChange}
-        darkMode={true}
-        isAnimatingNewSegment={isAnimatingNewSegment}
-        newSegmentProgress={newSegmentProgress}
-        lastTwoPoints={lastTwoPoints}
-        delayedPathData={delayedPathData}
-        delayedPathProgress={delayedPathProgress}
-        isAnimatingDelayedPath={isAnimatingDelayedPath}
-      />
-
-      {/* Bottom Stats */}
-      <ChartStats
-        fontSize={{
-          small: fontSize.small,
-          labels: fontSize.labels,
-        }}
-        padding={padding}
+        className="w-full h-full"
       />
     </div>
   );
 };
-
-export default LivePriceChart;

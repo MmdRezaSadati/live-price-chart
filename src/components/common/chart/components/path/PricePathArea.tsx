@@ -1,17 +1,24 @@
-import { SpringValue, animated } from "@react-spring/web";
+"use client";
+
+import React from "react";
+import { animated, SpringValue } from "@react-spring/web";
 
 interface PricePathAreaProps {
   areaPath: SpringValue<string>;
   fillColor: string;
 }
 
-export const PricePathArea = ({ areaPath, fillColor }: PricePathAreaProps) => {
+export const PricePathArea: React.FC<PricePathAreaProps> = ({
+  areaPath,
+  fillColor,
+}) => {
   return (
     <animated.path
       d={areaPath}
       fill={fillColor}
-      fillOpacity={0.1}
+      fillOpacity={0.2}
       stroke="none"
+      filter="url(#glow)"
     />
   );
 }; 
