@@ -54,17 +54,17 @@ export default function ChartContainer() {
   if (error) {
     return (
       <div className="w-full h-full flex items-center justify-center p-8">
-        <div className="text-center">
+        <div className="text-center glass p-8 rounded-2xl max-w-md">
           <div className="text-red-500 mb-4">
             <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-gray-200 mb-2">Error Loading Chart</h3>
-          <p className="text-gray-400">{error}</p>
+          <p className="text-gray-400 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-yellow-500 text-black rounded-lg hover:bg-yellow-400 transition-colors"
+            className="btn-primary"
           >
             Retry
           </button>
@@ -76,7 +76,7 @@ export default function ChartContainer() {
   if (isLoading) {
     return (
       <div className="w-full h-full flex items-center justify-center p-8">
-        <div className="text-center">
+        <div className="text-center glass p-8 rounded-2xl">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-yellow-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-400">Loading chart data...</p>
         </div>
@@ -87,14 +87,14 @@ export default function ChartContainer() {
   return (
     <div 
       ref={setContainerRef}
-      className="w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-[600px] relative"
+      className="w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-[600px] relative chart-container !overflow-y-hidden"
     >
       {dimensions.width > 0 && (
         <div className="absolute inset-0 transition-opacity duration-300">
-        <LivePriceChart 
-          width={dimensions.width} 
-          height={dimensions.height || Math.max(400, dimensions.width * 0.5)} 
-        />
+          <LivePriceChart 
+            width={dimensions.width} 
+            height={dimensions.height || Math.max(400, dimensions.width * 0.5)} 
+          />
         </div>
       )}
     </div>

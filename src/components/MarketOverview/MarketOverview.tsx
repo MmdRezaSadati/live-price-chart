@@ -21,15 +21,20 @@ export const MarketOverview = () => {
   const { marketData, isLoading, error } = useMarketData();
 
   return (
-    <div className="rounded-2xl bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 p-4 h-[calc(100vh-220px)] md:h-[calc(100vh-240px)] overflow-y-auto">
-      <h2 className="text-lg font-semibold mb-4 text-yellow-500">Market Overview</h2>
+    <div className="rounded-2xl bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 p-6 h-[calc(100vh-220px)] md:h-[calc(100vh-240px)] overflow-y-auto chart-container">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold gradient-text">Market Overview</h2>
+        <div className="live-indicator">
+          Live Data
+        </div>
+      </div>
       
       {isLoading && <LoadingState />}
       {error && <ErrorState />}
       {marketData && <MarketStatsList marketData={marketData} />}
       
       {marketData && (
-        <div className="mt-4 text-xs text-gray-500 text-center">
+        <div className="mt-6 text-xs text-gray-500 text-center glass p-3 rounded-lg">
           Last updated: {new Date(marketData.lastUpdate).toLocaleTimeString()}
         </div>
       )}
