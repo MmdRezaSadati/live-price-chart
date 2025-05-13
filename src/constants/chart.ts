@@ -26,7 +26,32 @@ export const CHART_ANIMATION = {
    * Higher values = smoother line drawing
    */
   LINE_DRAW_DURATION: 1000,
-  
+
+  /**
+   * Base duration for line draw (ms)
+   */
+  BASE_LINE_DRAW_DURATION: 1000,
+
+  /**
+   * Minimum transition duration (ms)
+   */
+  MIN_TRANSITION_DURATION: 200,
+
+  /**
+   * Maximum transition duration (ms)
+   */
+  MAX_TRANSITION_DURATION: 2000,
+
+  /**
+   * Price change threshold for animation (percent)
+   */
+  PRICE_CHANGE_THRESHOLD: 2,
+
+  /**
+   * Zoom threshold for animation
+   */
+  ZOOM_THRESHOLD: 5,
+
   /**
    * Easing function for animations
    * 'cubic' = cubic-bezier ease out
