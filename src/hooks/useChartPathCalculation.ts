@@ -10,11 +10,9 @@ export function useChartPathCalculation(_props: any) {
   });
 
   return {
-    areaPath: "",
     linePath: "",
     points: [],
     spring: {
-      areaPath: "",
       linePath: spring.linePath,
       x: spring.x,
       y: spring.y,

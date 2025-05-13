@@ -6,11 +6,10 @@ import * as d3 from "d3";
 import { useMemo } from "react";
 import { PricePathProps } from "../../../../types/chart";
 import { TimeAxis } from "./TimeAxis";
-import { PricePathArea } from "./PricePathArea";
-import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
 import { PricePathAnimation } from "./path/PricePathAnimation";
 import { PricePathIndicator } from "./path/PricePathIndicator";
 import { ChartGrid } from "./ChartGrid";
+import { useChartPathCalculation } from "@/hooks/useChartPathCalculation";
 
 export const PricePath = ({
   priceData,
@@ -40,10 +39,9 @@ export const PricePath = ({
   const timeAxisHeight = 30;
 
   const color = priceChange >= 0 ? COLORS.up : COLORS.down;
-  const fillColor = priceChange >= 0 ? COLORS.upGlow : COLORS.downGlow;
 
   // Calculate all path data using the hook with enhanced smoothing
-  const { areaPath, spring } = useChartPathCalculation({
+  const { spring } = useChartPathCalculation({
     priceData,
     timeScale,
     priceScale,
@@ -96,7 +94,6 @@ export const PricePath = ({
 
       {/* Chart content with animation */}
       <g>
-        <PricePathArea areaPath={spring.areaPath} fillColor={fillColor} />
         <animated.path
           d={spring.linePath.get()}
           fill="none"

@@ -4,11 +4,6 @@
   stroke-width: 1.5px;
 }
 
-.area {
-  fill: rgba(70, 130, 180, 0.15);
-  stroke: none;
-}
-
 .container {
   position: relative;
   width: 900px;

@@ -49,7 +49,6 @@ const LivePriceChart = () => {
     const dimensions: ChartDimensions = { width, height, margin };
     const { x, y } = createChartScales(dimensions, n);
     const lineGenerator = createLineGenerator(x, y);
-    const areaGenerator = createAreaGenerator(x, y);
 
     const g = svg
       .append("g")
@@ -125,13 +124,6 @@ const LivePriceChart = () => {
       updateYDomain();
       data = [...priceHistoryRef.current];
 
-      lineGroup
-        .append("path")
-        .datum(data)
-        .attr("class", styles.area)
-        .attr("fill", `url(#area-gradient-${priceChange || "up"})`)
-        .attr("d", areaGenerator);
-
       const path = lineGroup
         .append("path")
         .datum(data)
@@ -164,7 +156,6 @@ const LivePriceChart = () => {
         if (priceHistoryRef.current.length > n) priceHistoryRef.current.shift();
         updateYDomain();
         newData = price;
-        lastUpdate = now;
       } else {
         newData = data[data.length - 1];
       }
@@ -172,8 +163,7 @@ const LivePriceChart = () => {
       data.push(newData);
       if (data.length > n) data.shift();
 
-      // Update area and line paths
-      lineGroup.select(`.${styles.area}`).datum(data).attr("d", areaGenerator);
+      // Update line path
       d3.select(this).attr("d", lineGenerator(data)).attr("transform", null);
 
       // Continue animation
