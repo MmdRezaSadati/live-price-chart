@@ -7,6 +7,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // Number of initial price points to collect before showing the chart
 const INITIAL_PRICE_BUFFER_SIZE = 20;
 
+interface UseWebSocketProps {
+  onPriceUpdate: (price: number) => void;
+}
+
 /**
  * Custom hook for managing WebSocket connection with Binance
  * Handles connection, data throttling, heartbeat, and cleanup
@@ -14,7 +18,7 @@ const INITIAL_PRICE_BUFFER_SIZE = 20;
  * @param onPriceUpdate Callback function that receives the new price
  * @returns State and data related to the WebSocket connection
  */
-export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
+export const useWebSocket = ({ onPriceUpdate }: UseWebSocketProps) => {
   const [priceData, setPriceData] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
@@ -22,6 +26,7 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
   const lastUpdateRef = useRef<number>(0);
   const lastPriceRef = useRef<number>(0);
   const isStoppedRef = useRef(false);
+  const n = 40;
 
   useEffect(() => {
     // Fetch initial data
@@ -49,24 +54,30 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
   }, []);
 
   const startWebSocket = () => {
-    wsRef.current = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-    
-    wsRef.current.onmessage = (event) => {
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
       if (isStoppedRef.current) return;
       
       const msg = JSON.parse(event.data);
       const price = +msg.p;
       
       if (!isNaN(price)) {
-        const queue = priceQueueRef.current;
-        if (queue.length === 0 || Math.abs(price - queue[queue.length - 1]) >= 0.7) {
-          queue.push(price);
-          if (queue.length > 40) queue.shift();
+        if (
+          priceQueueRef.current.length === 0 ||
+          Math.abs(price - priceQueueRef.current[priceQueueRef.current.length - 1]) >= 0.4
+        ) {
+          priceQueueRef.current.push(price);
+          if (priceQueueRef.current.length > n) {
+            priceQueueRef.current.shift();
+          }
+          onPriceUpdate(price);
         }
       }
     };
 
-    wsRef.current.onerror = (error) => {
+    ws.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
   };
@@ -107,6 +118,7 @@ export const useWebSocket = (onPriceUpdate: (price: number) => void) => {
     priceData,
     isLoading,
     lastPrice: lastPriceRef.current,
-    stopWebSocket
+    stopWebSocket,
+    getPriceQueue: () => priceQueueRef.current,
   };
 };

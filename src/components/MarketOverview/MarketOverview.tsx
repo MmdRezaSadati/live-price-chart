@@ -5,6 +5,7 @@ import { useMarketData } from '@/hooks/useMarketData';
 import { MarketStatsList } from './components/MarketStatsList';
 import { LoadingState } from './components/LoadingState';
 import { ErrorState } from './components/ErrorState';
+import { LivePrice } from './components/LivePrice';
 
 const formatNumber = (num: number, decimals: number = 2) => {
   if (num >= 1e9) return `$${(num / 1e9).toFixed(decimals)}B`;
@@ -23,10 +24,13 @@ export const MarketOverview = () => {
   return (
     <div className="rounded-2xl bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 p-6 h-[calc(100vh-220px)] md:h-[calc(100vh-240px)] overflow-y-auto chart-container">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold gradient-text">Market Overview</h2>
-        <div className="live-indicator">
-          Live Data
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold gradient-text">Market Overview</h2>
+          <LivePrice />
         </div>
+        {/* <div className="live-indicator">
+          Live Data
+        </div> */}
       </div>
       
       {isLoading && <LoadingState />}

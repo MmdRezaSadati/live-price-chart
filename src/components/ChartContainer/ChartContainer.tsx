@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import { LivePriceChart } from '../common/chart/LivePriceChart';
 import * as d3 from 'd3';
 
 /**
@@ -89,14 +88,9 @@ export default function ChartContainer() {
       ref={setContainerRef}
       className="w-full h-full min-h-[400px] md:min-h-[500px] lg:min-h-[600px] relative chart-container !overflow-y-hidden"
     >
-      {dimensions.width > 0 && (
-        <div className="absolute inset-0 transition-opacity duration-300">
-          <LivePriceChart 
-            width={dimensions.width} 
-            height={dimensions.height || Math.max(400, dimensions.width * 0.5)} 
-          />
-        </div>
-      )}
+      <div className="relative w-full h-full">
+        {/* Remove LivePriceChart component */}
+      </div>
     </div>
   );
 } 

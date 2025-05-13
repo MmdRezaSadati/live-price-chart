@@ -3,6 +3,7 @@ import ChartContainer from '../components/ChartContainer/ChartContainer';
 import { MarketOverview } from '@/components/MarketOverview/MarketOverview';
 import { RefreshHandler } from '@/components/ChartContainer/components/RefreshHandler';
 import { ChartFooter } from '@/components/ChartContainer/components/ChartFooter';
+import LivePriceChart from '@/components/common/chart/LivePriceChart';
 
 export default function Home() {
   return (
@@ -22,7 +23,8 @@ export default function Home() {
                 className="w-full h-[calc(100vh-220px)] md:h-[calc(100vh-240px)] rounded-2xl overflow-hidden bg-gray-900/50 backdrop-blur-sm border border-gray-800/50 shadow-2xl transition-all duration-300 hover:shadow-yellow-500/10 group"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <ChartContainer />
+                <LivePriceChart />
+                {/* <ChartContainer /> */}
               </div>
             </div>
             <div className="lg:col-span-1">
