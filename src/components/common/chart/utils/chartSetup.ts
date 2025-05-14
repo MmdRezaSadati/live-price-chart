@@ -8,7 +8,7 @@ export interface ChartDimensions {
 
 export const createChartScales = (dimensions: ChartDimensions, n: number) => {
   const { width, height } = dimensions;
-  
+
   const x = d3
     .scaleLinear()
     .domain([1, n - 2])
@@ -19,7 +19,10 @@ export const createChartScales = (dimensions: ChartDimensions, n: number) => {
   return { x, y };
 };
 
-export const createLineGenerator = (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => {
+export const createLineGenerator = (
+  x: d3.ScaleLinear<number, number>,
+  y: d3.ScaleLinear<number, number>
+) => {
   return d3
     .line<number>()
     .curve(d3.curveCatmullRom)
@@ -27,7 +30,10 @@ export const createLineGenerator = (x: d3.ScaleLinear<number, number>, y: d3.Sca
     .y((d) => y(d));
 };
 
-export const createAreaGenerator = (x: d3.ScaleLinear<number, number>, y: d3.ScaleLinear<number, number>) => {
+export const createAreaGenerator = (
+  x: d3.ScaleLinear<number, number>,
+  y: d3.ScaleLinear<number, number>
+) => {
   return d3
     .area<number>()
     .curve(d3.curveCatmullRom)
@@ -36,11 +42,14 @@ export const createAreaGenerator = (x: d3.ScaleLinear<number, number>, y: d3.Sca
     .y1((d) => y(d));
 };
 
-export const createGradients = (svg: d3.Selection<SVGSVGElement, unknown, null, undefined>) => {
+export const createGradients = (
+  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>
+) => {
   const defs = svg.append("defs");
-  
+
   // Add glow filter
-  defs.append("filter")
+  defs
+    .append("filter")
     .attr("id", "glow")
     .append("feGaussianBlur")
     .attr("stdDeviation", "2.5")
@@ -60,21 +69,30 @@ export const createGradients = (svg: d3.Selection<SVGSVGElement, unknown, null, 
     gradient
       .append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E")
-      .attr("stop-opacity", 0.6);
+      .attr(
+        "stop-color",
+        type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E"
+      )
+      .attr("stop-opacity", 0.9);
 
     // Middle color - medium intensity
     gradient
       .append("stop")
       .attr("offset", "50%")
-      .attr("stop-color", type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E")
-      .attr("stop-opacity", 0.3);
+      .attr(
+        "stop-color",
+        type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E"
+      )
+      .attr("stop-opacity", 0.6);
 
     // Bottom color - fade out
     gradient
       .append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E")
+      .attr(
+        "stop-color",
+        type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E"
+      )
       .attr("stop-opacity", 0);
   });
-}; 
+};

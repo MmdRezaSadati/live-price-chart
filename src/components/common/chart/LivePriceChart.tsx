@@ -26,15 +26,6 @@ const LivePriceChart = () => {
   const priceHistoryRef = useRef<number[]>([]);
   const initialPriceRef = useRef<number | null>(null);
 
-  const getBackgroundGradient = (direction: "up" | "down" | null) => {
-    if (direction === "up") {
-      return "radial-gradient(circle at top right, rgba(76, 175, 80, 0.1), transparent 100%)";
-    } else if (direction === "down") {
-      return "radial-gradient(circle at top right, rgba(244, 67, 54, 0.1), transparent 100%)";
-    }
-    return "radial-gradient(circle at top right, rgba(158, 158, 158, 0.1), transparent 100%)";
-  };
-
   const handlePriceUpdate = (price: number) => {
     // Set initial price if not set
     if (!initialPriceRef.current) {
@@ -280,11 +271,6 @@ const LivePriceChart = () => {
   return (
     <div
       className={styles.chartWrapper}
-      style={
-        {
-          "--gradient-bg": getBackgroundGradient(priceChange),
-        } as React.CSSProperties
-      }
     >
       {loading && (
         <div className={styles.loading}>
