@@ -56,12 +56,21 @@ export const createGradients = (svg: d3.Selection<SVGSVGElement, unknown, null, 
       .attr("x2", "0%")
       .attr("y2", "100%");
 
+    // Top color - more intense
     gradient
       .append("stop")
       .attr("offset", "0%")
       .attr("stop-color", type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E")
+      .attr("stop-opacity", 0.6);
+
+    // Middle color - medium intensity
+    gradient
+      .append("stop")
+      .attr("offset", "50%")
+      .attr("stop-color", type === "up" ? "#4CAF50" : type === "down" ? "#F44336" : "#9E9E9E")
       .attr("stop-opacity", 0.3);
 
+    // Bottom color - fade out
     gradient
       .append("stop")
       .attr("offset", "100%")

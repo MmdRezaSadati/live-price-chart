@@ -5,7 +5,13 @@ import * as d3 from "d3";
 import styles from "./LivePriceChart.module.css";
 import { useWebSocket } from "../../../hooks/useWebSocket";
 import { Tooltip } from "./components/Tooltip";
-import { createChartScales, createLineGenerator, createAreaGenerator, createGradients, ChartDimensions } from "./utils/chartSetup";
+import {
+  createChartScales,
+  createLineGenerator,
+  createAreaGenerator,
+  createGradients,
+  ChartDimensions,
+} from "./utils/chartSetup";
 
 const LivePriceChart = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -18,20 +24,40 @@ const LivePriceChart = () => {
     value: number;
   } | null>(null);
   const priceHistoryRef = useRef<number[]>([]);
+  const initialPriceRef = useRef<number | null>(null);
+
+  const getBackgroundGradient = (direction: "up" | "down" | null) => {
+    if (direction === "up") {
+      return "radial-gradient(circle at top right, rgba(76, 175, 80, 0.1), transparent 100%)";
+    } else if (direction === "down") {
+      return "radial-gradient(circle at top right, rgba(244, 67, 54, 0.1), transparent 100%)";
+    }
+    return "radial-gradient(circle at top right, rgba(158, 158, 158, 0.1), transparent 100%)";
+  };
 
   const handlePriceUpdate = (price: number) => {
+    // Set initial price if not set
+    if (!initialPriceRef.current) {
+      initialPriceRef.current = price;
+    }
+
     // Only update price change direction
     if (priceHistoryRef.current.length >= 2) {
-      const currentPrice = priceHistoryRef.current[priceHistoryRef.current.length - 1];
-      const previousPrice = priceHistoryRef.current[priceHistoryRef.current.length - 2];
+      const currentPrice =
+        priceHistoryRef.current[priceHistoryRef.current.length - 1];
       setPriceChange(
-        currentPrice > previousPrice
+        getPriceChangeDirection(currentPrice) === "up"
           ? "up"
-          : currentPrice < previousPrice
+          : getPriceChangeDirection(currentPrice) === "down"
             ? "down"
             : null
       );
     }
+  };
+
+  const getPriceChangeDirection = (currentPrice: number) => {
+    if (!initialPriceRef.current) return "neutral";
+    return currentPrice > initialPriceRef.current ? "up" : "down";
   };
 
   const { getPriceQueue } = useWebSocket({ onPriceUpdate: handlePriceUpdate });
@@ -49,6 +75,7 @@ const LivePriceChart = () => {
     const dimensions: ChartDimensions = { width, height, margin };
     const { x, y } = createChartScales(dimensions, n);
     const lineGenerator = createLineGenerator(x, y);
+    const areaGenerator = createAreaGenerator(x, y);
 
     const g = svg
       .append("g")
@@ -58,7 +85,8 @@ const LivePriceChart = () => {
     g.append("g")
       .attr("class", styles.grid)
       .call(
-        d3.axisLeft(y)
+        d3
+          .axisLeft(y)
           .ticks(5)
           .tickSize(-width)
           .tickFormat(() => "")
@@ -67,16 +95,15 @@ const LivePriceChart = () => {
     g.append("g")
       .attr("class", styles.grid)
       .call(
-        d3.axisBottom(x)
+        d3
+          .axisBottom(x)
           .ticks(5)
           .tickSize(-height)
           .tickFormat(() => "")
       );
 
     // Add axes
-    g.append("g")
-      .attr("class", styles.axis)
-      .call(d3.axisLeft(y));
+    g.append("g").attr("class", styles.axis).call(d3.axisLeft(y));
 
     g.append("g")
       .attr("class", styles.axis)
@@ -109,7 +136,8 @@ const LivePriceChart = () => {
 
     function updateYDomain() {
       const mean =
-        priceHistoryRef.current.reduce((a, b) => a + b, 0) / priceHistoryRef.current.length;
+        priceHistoryRef.current.reduce((a, b) => a + b, 0) /
+        priceHistoryRef.current.length;
       let min = mean * 0.9999;
       let max = mean * 1.0001;
       const realMin = Math.min(...priceHistoryRef.current);
@@ -124,6 +152,14 @@ const LivePriceChart = () => {
       updateYDomain();
       data = [...priceHistoryRef.current];
 
+      // Add area path
+      const area = lineGroup
+        .append("path")
+        .datum(data)
+        .attr("class", styles.area)
+        .attr("fill", "url(#area-gradient-up)")
+        .attr("opacity", 0.4);
+
       const path = lineGroup
         .append("path")
         .datum(data)
@@ -135,12 +171,8 @@ const LivePriceChart = () => {
         .attr("stroke-linejoin", "round");
 
       linePath = path;
-      
-      path
-        .transition()
-        .duration(300)
-        .ease(d3.easeLinear)
-        .on("start", tick);
+
+      path.transition().duration(300).ease(d3.easeLinear).on("start", tick);
 
       const lastIdx = data.length - 1;
       latestPointCircle.attr("cx", x(lastIdx)).attr("cy", y(data[lastIdx]));
@@ -166,13 +198,28 @@ const LivePriceChart = () => {
       // Update line path
       d3.select(this).attr("d", lineGenerator(data)).attr("transform", null);
 
+      // Update area path with the same animation as the line path
+      const parentNode = d3.select(this.parentNode as Element);
+      const areaPath = parentNode.select(`.${styles.area}`);
+      const priceChangeDirection = getPriceChangeDirection(newData);
+
+      areaPath
+        .attr("d", areaGenerator(data))
+        .attr("transform", null)
+        .attr("fill", `url(#area-gradient-${priceChangeDirection})`);
+
       // Continue animation
       const active = d3.active(this);
       if (active) {
-        active
-          .attr("transform", `translate(${x(0)},0)`)
+        const transform = `translate(${x(0)},0)`;
+        active.attr("transform", transform).transition().on("start", tick);
+
+        // Apply the same transform to area path with the same transition
+        areaPath
+          .attr("transform", `translate(${x(0) + 10},0)`)
           .transition()
-          .on("start", tick);
+          .duration(300)
+          .ease(d3.easeLinear);
       }
 
       data.shift();
@@ -183,12 +230,12 @@ const LivePriceChart = () => {
       if (pathElement) {
         const lastX = x(lastIdx);
         const lastY = y(data[lastIdx]);
-        
+
         latestPointCircle
           .transition()
           .duration(50)
           .ease(d3.easeLinear)
-          .attr("cx", lastX + 15)
+          .attr("cx", lastX + 12)
           .attr("cy", lastY);
       }
     }
@@ -214,9 +261,7 @@ const LivePriceChart = () => {
     // Add tooltip logic
     svg.on("mousemove", function (event) {
       const [mx] = d3.pointer(event);
-      const idx = Math.round(
-        (mx - margin.left) / (width / (data.length - 1))
-      );
+      const idx = Math.round((mx - margin.left) / (width / (data.length - 1)));
       if (idx >= 0 && idx < data.length) {
         setTooltip({
           x: x(idx) + margin.left,
@@ -233,7 +278,14 @@ const LivePriceChart = () => {
   }, []);
 
   return (
-    <div className={styles.chartWrapper}>
+    <div
+      className={styles.chartWrapper}
+      style={
+        {
+          "--gradient-bg": getBackgroundGradient(priceChange),
+        } as React.CSSProperties
+      }
+    >
       {loading && (
         <div className={styles.loading}>
           <div className={styles.loadingSpinner}></div>
@@ -252,4 +304,3 @@ const LivePriceChart = () => {
 };
 
 export default LivePriceChart;
- 

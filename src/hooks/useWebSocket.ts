@@ -66,7 +66,7 @@ export const useWebSocket = ({ onPriceUpdate }: UseWebSocketProps) => {
       if (!isNaN(price)) {
         if (
           priceQueueRef.current.length === 0 ||
-          Math.abs(price - priceQueueRef.current[priceQueueRef.current.length - 1]) >= 0.4
+          Math.abs(price - priceQueueRef.current[priceQueueRef.current.length - 1]) >= 0.2
         ) {
           priceQueueRef.current.push(price);
           if (priceQueueRef.current.length > n) {
