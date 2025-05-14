@@ -1,9 +1,7 @@
-import React from 'react';
-import ChartContainer from '../components/ChartContainer/ChartContainer';
-import { MarketOverview } from '@/components/MarketOverview/MarketOverview';
-import { RefreshHandler } from '@/components/ChartContainer/components/RefreshHandler';
 import { ChartFooter } from '@/components/ChartContainer/components/ChartFooter';
+import { RefreshHandler } from '@/components/ChartContainer/components/RefreshHandler';
 import LivePriceChart from '@/components/common/chart/LivePriceChart';
+import { MarketOverview } from '@/components/MarketOverview/MarketOverview';
 
 export default function Home() {
   return (
