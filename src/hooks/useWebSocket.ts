@@ -1,11 +1,6 @@
 "use client";
 
-import { MAX_DATA_POINTS } from "@/constants/chart";
-import { PricePoint } from "@/types/chart";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-// Number of initial price points to collect before showing the chart
-const INITIAL_PRICE_BUFFER_SIZE = 20;
 
 interface UseWebSocketProps {
   onPriceUpdate: (price: number) => void;

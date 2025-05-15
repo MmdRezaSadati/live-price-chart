@@ -2,16 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import styles from "./LivePriceChart.module.css";
-import { useWebSocket } from "../../../hooks/useWebSocket";
-import { Tooltip } from "./components/Tooltip";
+import styles from "@/assets/styles/LivePriceChart.module.css";
+import { useWebSocket } from "../../hooks/useWebSocket";
+import { Tooltip } from "../common/Tooltip/Tooltip";
 import {
   createChartScales,
   createLineGenerator,
   createAreaGenerator,
   createGradients,
   ChartDimensions,
-} from "./utils/chartSetup";
+} from "../../utils/chartSetup";
 
 const LivePriceChart = () => {
   const svgRef = useRef<SVGSVGElement>(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { RefreshButton } from './RefreshButton';
+import { RefreshButton } from '../../common/RefreshButton/RefreshButton';
 
 interface ChartHeaderProps {
   title: string;

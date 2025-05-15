@@ -1,6 +1,6 @@
-import { ChartFooter } from '@/components/ChartContainer/components/ChartFooter';
-import { RefreshHandler } from '@/components/ChartContainer/components/RefreshHandler';
-import LivePriceChart from '@/components/common/chart/LivePriceChart';
+import { ChartFooter } from '@/components/chart/components/ChartFooter';
+import { RefreshHandler } from '@/components/chart/components/RefreshHandler';
+import LivePriceChart from '@/components/chart/LivePriceChart';
 import { MarketOverview } from '@/components/MarketOverview/MarketOverview';
 
 export default function Home() {

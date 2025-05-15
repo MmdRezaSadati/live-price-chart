@@ -1,4 +1,4 @@
-import styles from "../LivePriceChart.module.css";
+import styles from "@/assets/styles/LivePriceChart.module.css";
 
 interface TooltipProps {
   x: number;

@@ -1,23 +1,6 @@
 import { ChartColors } from '../types/chart';
 
 /**
- * Chart color scheme - modern and attractive theme
- */
-export const COLORS: ChartColors = {
-  up: '#4ade80',       // Softer green for positive movement
-  down: '#f87171',     // Softer red for negative movement
-  upGlow: 'rgba(74, 222, 128, 0.4)', // Green glow
-  downGlow: 'rgba(248, 113, 113, 0.4)', // Red glow
-  background: '#0f172a', // Deep blue background
-  cardBg: '#1e293b',     // Card background
-  text: '#f1f5f9',       // Light text
-  grid: 'rgba(148, 163, 184, 0.1)', // Grid lines
-  gridText: 'rgba(148, 163, 184, 0.6)', // Grid text
-  accent: '#fcd34d',     // Bitcoin yellow accent
-  neutral: '#64748b',    // Neutral gray for UI elements
-};
-
-/**
  * Chart animation settings
  */
 export const CHART_ANIMATION = {
